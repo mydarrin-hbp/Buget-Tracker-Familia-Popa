@@ -79,10 +79,35 @@ input[type=number]{max-width:95px}
 .cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
 .actions-cell{white-space:nowrap}
 @media(max-width:640px){.form-row{grid-template-columns:1fr}header h1{font-size:1.05rem}}
+
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#7c3aed 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.login-box{background:#fff;border-radius:16px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-box h2{font-size:1.25rem;margin-bottom:6px;color:#1a2332}
+.login-box p{font-size:.82rem;color:#6b7c93;margin-bottom:18px}
+.login-box input{width:100%;padding:12px 14px;border:1px solid #d8e0ea;border-radius:8px;font-size:1rem;margin-bottom:12px}
+.login-box input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.login-box .btn{width:100%;justify-content:center;padding:12px;font-size:1rem}
+.login-error{color:#dc2626;font-size:.8rem;margin-bottom:10px;display:none}
+.search-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.search-bar input,.search-bar select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:.82rem}
+.search-bar input{flex:1;min-width:160px}
+.search-bar select{min-width:140px}
+.app-hidden{display:none!important}
 </style>
 </head>
 <body>
-<div class="container">
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>🔐 Buget Tracker</h2>
+    <p>Familia Popa · Acces protejat</p>
+    <div class="login-error" id="loginError">Parolă incorrectă</div>
+    <input type="password" id="loginPass" placeholder="Introdu parola..." autocomplete="current-password">
+    <button class="btn btn-primary" onclick="tryLogin()">Intră</button>
+  </div>
+</div>
+
+<div class="container" id="appRoot">
 <header>
   <h1><span>📊</span> Buget Tracker <small style="font-size:.62em;color:var(--muted);font-weight:500">Familia Popa</small></h1>
   <div class="header-actions">
@@ -148,6 +173,13 @@ input[type=number]{max-width:95px}
 
 <div class="panel active" id="panel-cheltuieli">
   <div class="month-filter" id="monthFilterExp"></div>
+
+  <div class="search-bar">
+    <input type="text" id="searchExp" placeholder="🔍 Caută denumire / notă..." oninput="onSearch()">
+    <select id="filterCat" onchange="onSearch()">
+      <option value="all">Toate categoriile</option>
+    </select>
+  </div>
   <div class="card"><h2><span>Lista cheltuieli</span><span style="font-size:.72rem;color:var(--muted)" id="expCount"></span></h2>
   <table><thead><tr>
     <th>✓</th><th>Denumire</th><th>Categorie</th><th>Lună</th>
@@ -157,6 +189,10 @@ input[type=number]{max-width:95px}
 
 <div class="panel" id="panel-venituri">
   <div class="month-filter" id="monthFilterInc"></div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInc" placeholder="🔍 Caută sursă / notă..." oninput="onSearch()">
+  </div>
   <div class="card"><h2><span>Lista venituri</span><span style="font-size:.72rem;color:var(--muted)" id="incCount"></span></h2>
   <table><thead><tr>
     <th>✓</th><th>Sursă</th><th>Lună</th><th>Planificat</th><th>Realizat</th><th>Dif.</th><th>Status</th><th>Acțiuni</th>
@@ -257,6 +293,50 @@ const DEFAULT_CATEGORIES=[
 ];
 const CAT_COLORS=['#2563eb','#7c3aed','#dc2626','#ea580c','#0891b2','#16a34a','#ca8a04','#ec4899','#f43f5e','#8b5cf6','#14b8a6','#9333ea','#ef4444','#64748b','#f59e0b','#0ea5e9','#6366f1'];
 
+
+const APP_PASSWORD = 'Filipesti2@26';
+const AUTH_KEY = 'bugetPopa_auth';
+
+function checkAuth(){
+  if(sessionStorage.getItem(AUTH_KEY)==='1'){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appRoot').classList.remove('app-hidden');
+    return true;
+  }
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('appRoot').classList.add('app-hidden');
+  return false;
+}
+function tryLogin(){
+  const p = document.getElementById('loginPass').value;
+  if(p === APP_PASSWORD){
+    sessionStorage.setItem(AUTH_KEY,'1');
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appRoot').classList.remove('app-hidden');
+    document.getElementById('loginError').style.display='none';
+    render();
+  } else {
+    document.getElementById('loginError').style.display='block';
+    document.getElementById('loginPass').value='';
+    document.getElementById('loginPass').focus();
+  }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const inp=document.getElementById('loginPass');
+  if(inp) inp.addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()});
+});
+
+function onSearch(){ renderExpenses(); renderIncomes(); }
+
+function populateCatFilter(){
+  const sel=document.getElementById('filterCat');
+  if(!sel) return;
+  const cur=sel.value||'all';
+  sel.innerHTML='<option value="all">Toate categoriile</option>'+
+    state.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel.value=state.categories.includes(cur)?cur:'all';
+}
+
 const STORAGE_KEY='bugetPopa_v5'; // new key = wipe old data
 let state={expenses:[],incomes:[],log:[],categories:[],year:2026,view:'q4',filterMonth:'all',statusFilter:'all'};
 let charts={progress:null,sold:null,cat:null};
@@ -322,7 +402,8 @@ function statusBadge(e){
 }
 
 function render(){
-  ensureYearSelect();renderKPIs();renderCatGrid();renderMonthFilters();
+  if(!checkAuth()) return;
+  ensureYearSelect();populateCatFilter();renderKPIs();renderCatGrid();renderMonthFilters();
   renderExpenses();renderIncomes();renderLunar();renderLog();renderCharts();
 }
 
@@ -374,6 +455,10 @@ function renderExpenses(){
   if(state.statusFilter==='active')list=list.filter(isActive);
   else if(state.statusFilter==='postponed')list=list.filter(e=>e.status==='postponed');
   else if(state.statusFilter==='cancelled')list=list.filter(e=>e.status==='cancelled');
+  const catF=(document.getElementById('filterCat')||{}).value||'all';
+  const q=((document.getElementById('searchExp')||{}).value||'').trim().toLowerCase();
+  if(catF&&catF!=='all')list=list.filter(e=>e.category===catF);
+  if(q)list=list.filter(e=>(e.name||'').toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q));
   list=[...list].sort((a,b)=>a.month-b.month||(a.category||'').localeCompare(b.category||'')||a.name.localeCompare(b.name));
   document.getElementById('expCount').textContent=`${list.length} · ${state.year}`;
   const tb=document.getElementById('expBody');
@@ -409,6 +494,8 @@ function renderExpenses(){
 function renderIncomes(){
   let list=filterByPeriod(state.incomes);
   if(state.filterMonth!=='all')list=list.filter(e=>e.month===+state.filterMonth);
+  const q=((document.getElementById('searchInc')||{}).value||'').trim().toLowerCase();
+  if(q)list=list.filter(e=>(e.name||'').toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q));
   list=[...list].sort((a,b)=>a.month-b.month||a.name.localeCompare(b.name));
   document.getElementById('incCount').textContent=`${list.length} · ${state.year}`;
   const tb=document.getElementById('incBody');
@@ -642,7 +729,12 @@ document.getElementById('postponeModal').addEventListener('click',e=>{if(e.targe
 document.getElementById('catModal').addEventListener('click',e=>{if(e.target.id==='catModal')closeCatModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closePostpone();closeCatModal()}});
 
-load();render();
+
+checkAuth();
+load();
+if(sessionStorage.getItem(AUTH_KEY)==='1') render();
+else document.getElementById('loginPass')?.focus();
+
 </script>
 </body>
 </html>
