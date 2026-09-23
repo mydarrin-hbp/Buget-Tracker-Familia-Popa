@@ -155,10 +155,30 @@ input[type=number]{max-width:95px}
   <label>Vizualizare:</label>
   <select id="selView" onchange="onPeriodChange()">
     <option value="year">An întreg</option>
-    <option value="q1">T1 (Ian–Mar)</option>
-    <option value="q2">T2 (Apr–Iun)</option>
-    <option value="q3">T3 (Iul–Sep)</option>
-    <option value="q4">T4 (Oct–Dec)</option>
+    <optgroup label="Semestre">
+      <option value="s1">S1 (Ian–Iun)</option>
+      <option value="s2">S2 (Iul–Dec)</option>
+    </optgroup>
+    <optgroup label="Trimestre">
+      <option value="q1">T1 (Ian–Mar)</option>
+      <option value="q2">T2 (Apr–Iun)</option>
+      <option value="q3">T3 (Iul–Sep)</option>
+      <option value="q4">T4 (Oct–Dec)</option>
+    </optgroup>
+    <optgroup label="Luni">
+      <option value="m1">Ianuarie</option>
+      <option value="m2">Februarie</option>
+      <option value="m3">Martie</option>
+      <option value="m4">Aprilie</option>
+      <option value="m5">Mai</option>
+      <option value="m6">Iunie</option>
+      <option value="m7">Iulie</option>
+      <option value="m8">August</option>
+      <option value="m9">Septembrie</option>
+      <option value="m10">Octombrie</option>
+      <option value="m11">Noiembrie</option>
+      <option value="m12">Decembrie</option>
+    </optgroup>
   </select>
   <label style="margin-left:6px">Status:</label>
   <select id="selStatus" onchange="onStatusFilter()">
@@ -391,9 +411,16 @@ function save(show=true){localStorage.setItem(STORAGE_KEY,JSON.stringify(state))
 function log(a,d){state.log.unshift({ts:new Date().toISOString(),action:a,details:d});if(state.log.length>60)state.log=state.log.slice(0,60)}
 
 function getActiveMonths(){
-  const v=state.view;
+  const v=state.view||'year';
   if(v==='year')return[1,2,3,4,5,6,7,8,9,10,11,12];
-  if(v==='q1')return[1,2,3];if(v==='q2')return[4,5,6];if(v==='q3')return[7,8,9];return[10,11,12];
+  if(v==='s1')return[1,2,3,4,5,6];
+  if(v==='s2')return[7,8,9,10,11,12];
+  if(v==='q1')return[1,2,3];
+  if(v==='q2')return[4,5,6];
+  if(v==='q3')return[7,8,9];
+  if(v==='q4')return[10,11,12];
+  if(v.startsWith('m')){const n=parseInt(v.slice(1),10);if(n>=1&&n<=12)return[n];}
+  return[1,2,3,4,5,6,7,8,9,10,11,12];
 }
 function filterByPeriod(list){const m=getActiveMonths();return list.filter(x=>x.year===state.year&&m.includes(x.month))}
 function isActive(e){return !e.status||e.status==='active'}
