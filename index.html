@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Buget Tracker – Familia Popa</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="data.js"></script>
 <style>
 :root{--bg:#f4f6f9;--card:#fff;--card2:#eef2f7;--border:#d8e0ea;--text:#1a2332;--muted:#6b7c93;--accent:#2563eb;--accent-h:#1d4ed8;--green:#16a34a;--green-bg:rgba(22,163,74,.1);--red:#dc2626;--red-bg:rgba(220,38,38,.1);--yellow:#ca8a04;--yellow-bg:rgba(202,138,4,.12);--orange:#ea580c;--orange-bg:rgba(234,88,12,.12);--radius:12px;--shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
@@ -125,7 +128,9 @@ input[type=number]{max-width:95px}
 <header>
   <h1><span>📊</span> Buget Tracker <small style="font-size:.62em;color:var(--muted);font-weight:500">Familia Popa</small></h1>
   <div class="header-actions">
-    <button class="btn btn-ghost btn-sm" onclick="exportJSON()">⬇️ Export</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportExcel()" title="Excel pe luni, categorii, total">📊 Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportPDF()" title="PDF pe luni, categorii, total">📄 PDF</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportJSON()" title="Backup JSON">⬇️ JSON</button>
     <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆️ Import</button>
     <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
     <button class="btn btn-ghost btn-sm" onclick="resetData()">🔄 Reset</button>
@@ -814,6 +819,218 @@ function resetData(){
   localStorage.removeItem('bugetPopa_v3');localStorage.removeItem('bugetTracker_v2');localStorage.removeItem('bugetTracker_v1');
   initDefaults();toast('Resetat la bugetul nou','success');render();
 }
+
+function getExportData(){
+  const months=getActiveMonths();
+  const year=state.year;
+  const ex=state.expenses.filter(e=>e.year===year&&months.includes(e.month)&&isActive(e));
+  const inc=state.incomes.filter(i=>i.year===year&&months.includes(i.month));
+  return {months,year,ex,inc};
+}
+
+function exportExcel(){
+  if(typeof XLSX==='undefined'){toast('Biblioteca Excel nu s-a încărcat','error');return}
+  const {months,year,ex,inc}=getExportData();
+  const MS={1:'Ian',2:'Feb',3:'Mar',4:'Apr',5:'Mai',6:'Iun',7:'Iul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'};
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Total / KPI
+  let tIP=0,tIA=0,tEP=0,tEA=0;
+  months.forEach(m=>{
+    tIP+=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.planned||0),0);
+    tIA+=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.actual||0),0);
+    tEP+=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.planned||0),0);
+    tEA+=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.actual||0),0);
+  });
+  const totalRows=[
+    ['BUGET TRACKER FAM. POPA – TOTAL'],
+    ['An',year],
+    ['Vizualizare',state.view],
+    ['Generat',new Date().toLocaleString('ro-RO')],
+    [],
+    ['Indicator','Planificat (lei)','Realizat (lei)'],
+    ['Venituri',tIP,tIA],
+    ['Cheltuieli',tEP,tEA],
+    ['Sold',tIP-tEP,tIA-tEA],
+  ];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(totalRows),'Total');
+
+  // Sheet 2: Pe luni
+  const lunHeader=['Lună','Venituri plan.','Venituri real.','Cheltuieli plan.','Cheltuieli real.','Sold plan.','Sold real.'];
+  const lunRows=[lunHeader];
+  months.forEach(m=>{
+    const ip=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.planned||0),0);
+    const ia=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.actual||0),0);
+    const ep=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.planned||0),0);
+    const ea=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.actual||0),0);
+    lunRows.push([MS[m]+' '+year,ip,ia,ep,ea,ip-ep,ia-ea]);
+  });
+  lunRows.push(['TOTAL',tIP,tIA,tEP,tEA,tIP-tEP,tIA-tEA]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(lunRows),'Pe luni');
+
+  // Sheet 3: Pe categorii
+  const catMap={};
+  ex.forEach(e=>{
+    if(!catMap[e.category])catMap[e.category]={p:0,a:0};
+    catMap[e.category].p+=(e.planned||0);
+    catMap[e.category].a+=(e.actual||0);
+  });
+  const catRows=[['Categorie','Planificat','Realizat','Diferență']];
+  Object.keys(catMap).sort().forEach(c=>{
+    const {p,a}=catMap[c];
+    catRows.push([c,p,a,a-p]);
+  });
+  catRows.push(['TOTAL',tEP,tEA,tEA-tEP]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(catRows),'Pe categorii');
+
+  // Sheet 4: Detaliu cheltuieli
+  const detRows=[['Denumire','Categorie','Lună','Planificat','Realizat','Status','Note']];
+  [...ex].sort((a,b)=>a.month-b.month||(a.category||'').localeCompare(b.category||'')).forEach(e=>{
+    detRows.push([e.name,e.category,MS[e.month]+' '+e.year,e.planned||0,e.actual||0,e.status||'active',e.notes||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detRows),'Detaliu cheltuieli');
+
+  // Sheet 5: Detaliu venituri
+  const vinRows=[['Sursă','Lună','Planificat','Realizat','Note']];
+  [...inc].sort((a,b)=>a.month-b.month||a.name.localeCompare(b.name)).forEach(i=>{
+    vinRows.push([i.name,MS[i.month]+' '+i.year,i.planned||0,i.actual||0,i.notes||'']);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(vinRows),'Detaliu venituri');
+
+  XLSX.writeFile(wb,`Buget_Popa_${year}_${state.view}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel exportat ✓','success');
+  log('Export Excel',`An ${year}, vizualizare ${state.view}`);
+  save(false);
+}
+
+function exportPDF(){
+  if(typeof jspdf==='undefined'&&typeof window.jspdf==='undefined'){toast('Biblioteca PDF nu s-a încărcat','error');return}
+  const {jsPDF}=window.jspdf;
+  const {months,year,ex,inc}=getExportData();
+  const MS={1:'Ianuarie',2:'Februarie',3:'Martie',4:'Aprilie',5:'Mai',6:'Iunie',7:'Iulie',8:'August',9:'Septembrie',10:'Octombrie',11:'Noiembrie',12:'Decembrie'};
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pageW=doc.internal.pageSize.getWidth();
+  let y=16;
+
+  // Header
+  doc.setFontSize(16); doc.setFont(undefined,'bold');
+  doc.text('Buget Tracker – Familia Popa',14,y); y+=7;
+  doc.setFontSize(10); doc.setFont(undefined,'normal');
+  doc.setTextColor(80);
+  doc.text(`An ${year} · Vizualizare: ${state.view} · Generat: ${new Date().toLocaleString('ro-RO')}`,14,y); y+=10;
+  doc.setTextColor(0);
+
+  // TOTALURI
+  let tIP=0,tIA=0,tEP=0,tEA=0;
+  months.forEach(m=>{
+    tIP+=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.planned||0),0);
+    tIA+=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.actual||0),0);
+    tEP+=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.planned||0),0);
+    tEA+=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.actual||0),0);
+  });
+  doc.setFontSize(12); doc.setFont(undefined,'bold');
+  doc.text('1. TOTALURI',14,y); y+=2;
+  doc.autoTable({
+    startY:y,
+    head:[['Indicator','Planificat (lei)','Realizat (lei)']],
+    body:[
+      ['Venituri',tIP.toLocaleString('ro-RO'),tIA.toLocaleString('ro-RO')],
+      ['Cheltuieli',tEP.toLocaleString('ro-RO'),tEA.toLocaleString('ro-RO')],
+      ['Sold',(tIP-tEP).toLocaleString('ro-RO'),(tIA-tEA).toLocaleString('ro-RO')],
+    ],
+    theme:'grid',
+    headStyles:{fillColor:[37,99,235]},
+    margin:{left:14,right:14},
+    styles:{fontSize:9}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // PE LUNI
+  doc.setFontSize(12); doc.setFont(undefined,'bold');
+  doc.text('2. PE LUNI',14,y); y+=2;
+  const lunBody=months.map(m=>{
+    const ip=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.planned||0),0);
+    const ia=inc.filter(i=>i.month===m).reduce((s,i)=>s+(i.actual||0),0);
+    const ep=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.planned||0),0);
+    const ea=ex.filter(e=>e.month===m).reduce((s,e)=>s+(e.actual||0),0);
+    return [MS[m],ip.toLocaleString('ro-RO'),ia.toLocaleString('ro-RO'),ep.toLocaleString('ro-RO'),ea.toLocaleString('ro-RO'),(ip-ep).toLocaleString('ro-RO')];
+  });
+  lunBody.push(['TOTAL',tIP.toLocaleString('ro-RO'),tIA.toLocaleString('ro-RO'),tEP.toLocaleString('ro-RO'),tEA.toLocaleString('ro-RO'),(tIP-tEP).toLocaleString('ro-RO')]);
+  doc.autoTable({
+    startY:y,
+    head:[['Lună','Ven. plan.','Ven. real.','Chel. plan.','Chel. real.','Sold plan.']],
+    body:lunBody,
+    theme:'grid',
+    headStyles:{fillColor:[37,99,235]},
+    margin:{left:14,right:14},
+    styles:{fontSize:8},
+    footStyles:{fontStyle:'bold'}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // PE CATEGORII
+  if(y>250){doc.addPage(); y=16;}
+  doc.setFontSize(12); doc.setFont(undefined,'bold');
+  doc.text('3. PE CATEGORII',14,y); y+=2;
+  const catMap={};
+  ex.forEach(e=>{
+    if(!catMap[e.category])catMap[e.category]={p:0,a:0};
+    catMap[e.category].p+=(e.planned||0);
+    catMap[e.category].a+=(e.actual||0);
+  });
+  const catBody=Object.keys(catMap).sort().map(c=>{
+    const {p,a}=catMap[c];
+    return [c,p.toLocaleString('ro-RO'),a.toLocaleString('ro-RO'),(a-p).toLocaleString('ro-RO')];
+  });
+  catBody.push(['TOTAL',tEP.toLocaleString('ro-RO'),tEA.toLocaleString('ro-RO'),(tEA-tEP).toLocaleString('ro-RO')]);
+  doc.autoTable({
+    startY:y,
+    head:[['Categorie','Planificat','Realizat','Diferență']],
+    body:catBody,
+    theme:'grid',
+    headStyles:{fillColor:[124,58,237]},
+    margin:{left:14,right:14},
+    styles:{fontSize:8}
+  });
+  y=doc.lastAutoTable.finalY+10;
+
+  // DETALIU (optional, if space - or new page)
+  doc.addPage();
+  y=16;
+  doc.setFontSize(12); doc.setFont(undefined,'bold');
+  doc.text('4. DETALIU CHELTUIELI',14,y); y+=2;
+  const detBody=[...ex].sort((a,b)=>a.month-b.month||(a.category||'').localeCompare(b.category||'')).map(e=>[
+    e.name.substring(0,28),
+    (e.category||'').substring(0,18),
+    MS[e.month].substring(0,3),
+    (e.planned||0).toLocaleString('ro-RO'),
+    (e.actual||0).toLocaleString('ro-RO')
+  ]);
+  doc.autoTable({
+    startY:y,
+    head:[['Denumire','Categorie','Lună','Plan.','Real.']],
+    body:detBody,
+    theme:'grid',
+    headStyles:{fillColor:[37,99,235]},
+    margin:{left:14,right:14},
+    styles:{fontSize:7}
+  });
+
+  // Footer page numbers
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setTextColor(150);
+    doc.text(`Pagina ${i}/${pages}`,pageW/2,doc.internal.pageSize.getHeight()-8,{align:'center'});
+  }
+
+  doc.save(`Buget_Popa_${year}_${state.view}_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('PDF exportat ✓','success');
+  log('Export PDF',`An ${year}, vizualizare ${state.view}`);
+  save(false);
+}
+
+
 function exportJSON(){
   const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
