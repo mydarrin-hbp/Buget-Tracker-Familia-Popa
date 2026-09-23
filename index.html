@@ -93,6 +93,20 @@ input[type=number]{max-width:95px}
 .search-bar input{flex:1;min-width:160px}
 .search-bar select{min-width:140px}
 .app-hidden{display:none!important}
+
+.month-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+.month-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);transition:.15s;cursor:pointer}
+.month-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(37,99,235,.12)}
+.month-card .mc-title{font-size:.95rem;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.month-card .mc-row{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px}
+.month-card .mc-row .lbl{color:var(--muted)}
+.month-card .mc-row .val{font-weight:600}
+.month-card .mc-sold{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-weight:700;font-size:.9rem;display:flex;justify-content:space-between}
+.month-card .mc-bar{height:6px;background:var(--card2);border-radius:3px;overflow:hidden;margin-top:6px}
+.month-card .mc-bar>div{height:100%;border-radius:3px}
+.month-card.deficit{border-left:4px solid var(--red)}
+.month-card.surplus{border-left:4px solid var(--green)}
+.lunar-chart-wrap{position:relative;height:280px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -200,10 +214,21 @@ input[type=number]{max-width:95px}
 </div>
 
 <div class="panel" id="panel-lunar">
-  <div class="card"><h2>Sumar pe luni (doar cheltuieli active)</h2>
-  <table><thead><tr>
-    <th>Lună</th><th>Venituri plan.</th><th>Venituri real.</th><th>Cheltuieli plan.</th><th>Cheltuieli real.</th><th>Sold plan.</th><th>Sold real.</th>
-  </tr></thead><tbody id="lunarBody"></tbody></table></div>
+  <div class="card">
+    <h2>Vizualizare lunară – <span id="lunarYearLabel"></span></h2>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:12px">Carduri pe lună · click pe o lună pentru filtrare în Cheltuieli/Venituri</p>
+    <div class="month-cards" id="monthCards"></div>
+  </div>
+  <div class="card">
+    <h2>Grafic comparativ pe luni</h2>
+    <div class="lunar-chart-wrap"><canvas id="chartLunar"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Tabel detaliat (cheltuieli active)</h2>
+    <table><thead><tr>
+      <th>Lună</th><th>Venituri plan.</th><th>Venituri real.</th><th>Cheltuieli plan.</th><th>Cheltuieli real.</th><th>Sold plan.</th><th>Sold real.</th><th>% realizat</th>
+    </tr></thead><tbody id="lunarBody"></tbody></table>
+  </div>
 </div>
 
 <div class="panel" id="panel-istoric">
@@ -339,7 +364,7 @@ function populateCatFilter(){
 
 const STORAGE_KEY='bugetPopa_v5'; // new key = wipe old data
 let state={expenses:[],incomes:[],log:[],categories:[],year:2026,view:'q4',filterMonth:'all',statusFilter:'all'};
-let charts={progress:null,sold:null,cat:null};
+let charts={progress:null,sold:null,cat:null,lunar:null};
 let postponeId=null;
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
@@ -518,25 +543,79 @@ function renderIncomes(){
 }
 
 function renderLunar(){
-  const months=getActiveMonths();let rows='',tIP=0,tIA=0,tEP=0,tEA=0;
+  const months=getActiveMonths();
+  document.getElementById('lunarYearLabel').textContent=state.year;
+  let rows='',tIP=0,tIA=0,tEP=0,tEA=0;
+  const cards=[];
+  const labels=[], planInc=[], actInc=[], planExp=[], actExp=[], soldPlan=[], soldAct=[];
+
   months.forEach(m=>{
     const ip=state.incomes.filter(i=>i.year===state.year&&i.month===m).reduce((s,i)=>s+(i.planned||0),0);
     const ia=state.incomes.filter(i=>i.year===state.year&&i.month===m).reduce((s,i)=>s+(i.actual||0),0);
     const ep=state.expenses.filter(e=>e.year===state.year&&e.month===m&&isActive(e)).reduce((s,e)=>s+(e.planned||0),0);
     const ea=state.expenses.filter(e=>e.year===state.year&&e.month===m&&isActive(e)).reduce((s,e)=>s+(e.actual||0),0);
+    const sp=ip-ep, sa=ia-ea;
+    const pct=ep?Math.round(ea/ep*100):0;
     tIP+=ip;tIA+=ia;tEP+=ep;tEA+=ea;
-    rows+=`<tr><td><strong>${MONTH_SHORT[m]} ${state.year}</strong></td>
+    labels.push(MONTH_SHORT[m]);
+    planInc.push(ip); actInc.push(ia); planExp.push(ep); actExp.push(ea); soldPlan.push(sp); soldAct.push(sa);
+
+    const cls=sp>=0?'surplus':'deficit';
+    cards.push(`<div class="month-card ${cls}" onclick="jumpToMonth(${m})" title="Filtrează luna ${MONTH_SHORT[m]}">
+      <div class="mc-title"><span>${MONTH_SHORT[m]} ${state.year}</span><span class="badge ${sp>=0?'badge-ok':'badge-pending'}">${sp>=0?'+':''}${fmt(sp)}</span></div>
+      <div class="mc-row"><span class="lbl">Venituri plan.</span><span class="val">${fmt(ip)}</span></div>
+      <div class="mc-row"><span class="lbl">Venituri real.</span><span class="val">${fmt(ia)}</span></div>
+      <div class="mc-row"><span class="lbl">Cheltuieli plan.</span><span class="val">${fmt(ep)}</span></div>
+      <div class="mc-row"><span class="lbl">Cheltuieli real.</span><span class="val">${fmt(ea)}</span></div>
+      <div class="mc-bar"><div style="width:${Math.min(pct,100)}%;background:${pct>=100?'var(--red)':'var(--accent)'}"></div></div>
+      <div class="mc-row" style="margin-top:4px"><span class="lbl">Realizat cheltuieli</span><span class="val">${pct}%</span></div>
+      <div class="mc-sold"><span>Sold real</span><span style="color:${sa>=0?'var(--green)':'var(--red)'}">${sa>=0?'+':''}${fmt(sa)}</span></div>
+    </div>`);
+
+    rows+=`<tr style="cursor:pointer" onclick="jumpToMonth(${m})">
+      <td><strong>${MONTH_SHORT[m]} ${state.year}</strong></td>
       <td class="amount">${fmt(ip)}</td><td class="amount">${fmt(ia)}</td>
       <td class="amount">${fmt(ep)}</td><td class="amount">${fmt(ea)}</td>
-      <td class="amount ${ip-ep>=0?'diff-pos':'diff-neg'}">${fmt(ip-ep)}</td>
-      <td class="amount ${ia-ea>=0?'diff-pos':'diff-neg'}">${fmt(ia-ea)}</td></tr>`;
+      <td class="amount ${sp>=0?'diff-pos':'diff-neg'}">${fmt(sp)}</td>
+      <td class="amount ${sa>=0?'diff-pos':'diff-neg'}">${fmt(sa)}</td>
+      <td class="amount">${pct}%</td></tr>`;
   });
+
+  document.getElementById('monthCards').innerHTML=cards.join('')||'<div class="empty">Nicio lună în perioada selectată</div>';
+
   rows+=`<tr style="font-weight:700;background:var(--card2)"><td>TOTAL</td>
     <td class="amount">${fmt(tIP)}</td><td class="amount">${fmt(tIA)}</td>
     <td class="amount">${fmt(tEP)}</td><td class="amount">${fmt(tEA)}</td>
     <td class="amount ${tIP-tEP>=0?'diff-pos':'diff-neg'}">${fmt(tIP-tEP)}</td>
-    <td class="amount ${tIA-tEA>=0?'diff-pos':'diff-neg'}">${fmt(tIA-tEA)}</td></tr>`;
+    <td class="amount ${tIA-tEA>=0?'diff-pos':'diff-neg'}">${fmt(tIA-tEA)}</td>
+    <td class="amount">${tEP?Math.round(tEA/tEP*100):0}%</td></tr>`;
   document.getElementById('lunarBody').innerHTML=rows;
+
+  // Lunar chart
+  if(charts.lunar) charts.lunar.destroy();
+  const ctx=document.getElementById('chartLunar');
+  if(ctx){
+    charts.lunar=new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[
+        {label:'Venituri plan.',data:planInc,backgroundColor:'rgba(22,163,74,.5)',borderRadius:3},
+        {label:'Venituri real.',data:actInc,backgroundColor:'rgba(22,163,74,.85)',borderRadius:3},
+        {label:'Cheltuieli plan.',data:planExp,backgroundColor:'rgba(220,38,38,.4)',borderRadius:3},
+        {label:'Cheltuieli real.',data:actExp,backgroundColor:'rgba(220,38,38,.75)',borderRadius:3}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#6b7c93',font:{size:11}}}},
+        scales:{x:{ticks:{color:'#6b7c93'},grid:{color:'rgba(0,0,0,.04)'}},
+                y:{ticks:{color:'#6b7c93'},grid:{color:'rgba(0,0,0,.04)'}}}}
+    });
+  }
+}
+function jumpToMonth(m){
+  state.filterMonth=String(m);
+  save(false);
+  switchTab('cheltuieli');
+  render();
+  toast('Filtru: '+MONTH_SHORT[m]+' '+state.year,'success');
 }
 
 function renderLog(){
