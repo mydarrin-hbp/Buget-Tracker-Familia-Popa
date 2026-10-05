@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buget Tracker – Familia Popa</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="data.js"></script>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--card2:#eef2f7;--border:#d8e0ea;--text:#1a2332;--muted:#6b7c93;--accent:#2563eb;--accent-h:#1d4ed8;--green:#16a34a;--green-bg:rgba(22,163,74,.1);--red:#dc2626;--red-bg:rgba(220,38,38,.1);--yellow:#ca8a04;--yellow-bg:rgba(202,138,4,.12);--orange:#ea580c;--orange-bg:rgba(234,88,12,.12);--radius:12px;--shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
+.container{max-width:1360px;margin:0 auto;padding:18px 14px 50px}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+header h1{font-size:1.3rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.header-actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:8px;border:none;cursor:pointer;font-size:.82rem;font-weight:600;transition:.15s}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-h)}
+.btn-success{background:var(--green);color:#fff}.btn-success:hover{filter:brightness(1.08)}
+.btn-warning{background:var(--orange);color:#fff}.btn-danger{background:var(--red);color:#fff}
+.btn-ghost{background:var(--card);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{background:var(--card2)}
+.btn-sm{padding:5px 10px;font-size:.76rem}.btn-icon{padding:4px 6px}
+.hero{background:linear-gradient(135deg,#2563eb 0%,#7c3aed 100%);color:#fff;border-radius:12px;padding:14px 18px;margin-bottom:14px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 4px 20px rgba(37,99,235,.25)}
+.hero .t{font-size:1.05rem;font-weight:700}.hero .s{font-size:.76rem;opacity:.9;margin-top:2px}
+.hero .pill{background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px;font-size:.72rem;font-weight:600}
+.period-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;box-shadow:var(--shadow)}
+.period-bar label{font-size:.74rem;color:var(--muted);font-weight:600}
+.period-bar select{width:auto;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:6px;font-size:.8rem;font-weight:600}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow)}
+.kpi .label{font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.kpi .value{font-size:1.15rem;font-weight:700}.kpi .sub{font-size:.7rem;color:var(--muted)}
+.kpi.positive .value{color:var(--green)}.kpi.negative .value{color:var(--red)}
+.progress-wrap{margin-top:5px}.progress-bar{height:6px;background:var(--card2);border-radius:3px;overflow:hidden}
+.progress-bar>div{height:100%;border-radius:3px;transition:width .4s}
+.progress-bar .green{background:var(--green)}.progress-bar .red{background:var(--red)}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px}
+.cat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow)}
+.cat-card .cat-name{font-size:.7rem;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px}
+.cat-card .cat-val{font-size:.95rem;font-weight:700}.cat-card .cat-sub{font-size:.66rem;color:var(--muted)}
+.tabs{display:flex;gap:3px;margin-bottom:12px;flex-wrap:wrap;background:var(--card);padding:4px;border-radius:10px;border:1px solid var(--border);box-shadow:var(--shadow)}
+.tab{padding:7px 12px;border-radius:7px;border:none;background:transparent;color:var(--muted);font-weight:600;font-size:.78rem;cursor:pointer}
+.tab:hover{color:var(--text);background:var(--card2)}.tab.active{background:var(--accent);color:#fff}
+.panel{display:none}.panel.active{display:block}
+.month-filter{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.month-btn{padding:4px 10px;border-radius:16px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-size:.72rem;font-weight:600;cursor:pointer}
+.month-btn:hover,.month-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:12px;box-shadow:var(--shadow);overflow-x:auto}
+.card h2{font-size:.95rem;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{text-align:left;padding:7px 5px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-size:.66rem;text-transform:uppercase;background:var(--card2)}
+td{padding:6px 5px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:hover td{background:rgba(37,99,235,.03)}
+tr.row-postponed td{opacity:.65;background:var(--orange-bg)}
+tr.row-cancelled td{opacity:.5;text-decoration:line-through;background:var(--red-bg)}
+.amount{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.amount.planned{color:var(--muted)}.amount.diff-pos{color:var(--green)}.amount.diff-neg{color:var(--red)}
+.badge{display:inline-block;padding:2px 7px;border-radius:14px;font-size:.62rem;font-weight:700}
+.badge-ok{background:var(--green-bg);color:var(--green)}.badge-partial{background:var(--yellow-bg);color:var(--yellow)}
+.badge-pending{background:var(--red-bg);color:var(--red)}.badge-postponed{background:var(--orange-bg);color:var(--orange)}
+.badge-cancelled{background:var(--red-bg);color:var(--red)}
+.check{width:15px;height:15px;accent-color:var(--green);cursor:pointer}
+input[type=number],input[type=text],select,textarea{background:var(--card2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:.78rem;width:100%}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+input[type=number]{max-width:95px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000;padding:14px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border-radius:14px;width:100%;max-width:480px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.15);max-height:90vh;overflow-y:auto}
+.modal h3{font-size:1.05rem;margin-bottom:12px}
+.form-group{margin-bottom:10px}.form-group label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:3px;font-weight:600}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.toast{position:fixed;bottom:18px;right:18px;background:var(--card);border:1px solid var(--border);padding:10px 14px;border-radius:10px;font-size:.8rem;box-shadow:var(--shadow);transform:translateY(80px);opacity:0;transition:.3s;z-index:2000}
+.toast.show{transform:translateY(0);opacity:1}.toast.success{border-left:4px solid var(--green)}.toast.error{border-left:4px solid var(--red)}
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-bottom:12px}
+.chart-box{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow)}
+.chart-box h3{font-size:.82rem;margin-bottom:6px;color:var(--muted)}.chart-wrap{position:relative;height:210px}
+.empty{text-align:center;padding:28px 14px;color:var(--muted)}
+.cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.actions-cell{white-space:nowrap}
+@media(max-width:640px){.form-row{grid-template-columns:1fr}header h1{font-size:1.05rem}}
+
+.login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#1e3a5f 0%,#2563eb 50%,#7c3aed 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+.login-box{background:#fff;border-radius:16px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-box h2{font-size:1.25rem;margin-bottom:6px;color:#1a2332}
+.login-box p{font-size:.82rem;color:#6b7c93;margin-bottom:18px}
+.login-box input{width:100%;padding:12px 14px;border:1px solid #d8e0ea;border-radius:8px;font-size:1rem;margin-bottom:12px}
+.login-box input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+.login-box .btn{width:100%;justify-content:center;padding:12px;font-size:1rem}
+.login-error{color:#dc2626;font-size:.8rem;margin-bottom:10px;display:none}
+.search-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.search-bar input,.search-bar select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-size:.82rem}
+.search-bar input{flex:1;min-width:160px}
+.search-bar select{min-width:140px}
+.app-hidden{display:none!important}
+
+.month-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+.month-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:var(--shadow);transition:.15s;cursor:pointer}
+.month-card:hover{border-color:var(--accent);box-shadow:0 4px 16px rgba(37,99,235,.12)}
+.month-card .mc-title{font-size:.95rem;font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.month-card .mc-row{display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:4px}
+.month-card .mc-row .lbl{color:var(--muted)}
+.month-card .mc-row .val{font-weight:600}
+.month-card .mc-sold{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-weight:700;font-size:.9rem;display:flex;justify-content:space-between}
+.month-card .mc-bar{height:6px;background:var(--card2);border-radius:3px;overflow:hidden;margin-top:6px}
+.month-card .mc-bar>div{height:100%;border-radius:3px}
+.month-card.deficit{border-left:4px solid var(--red)}
+.month-card.surplus{border-left:4px solid var(--green)}
+.lunar-chart-wrap{position:relative;height:280px;margin-bottom:12px}
+.hint-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--yellow-bg);border:1px solid var(--yellow);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:.82rem}
+.month-card.closed{background:linear-gradient(180deg,var(--card2),var(--card))}
+.mc-foot{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:8px;font-size:.7rem;color:var(--muted);flex-wrap:wrap}
+.badge-closed{background:var(--card2);color:var(--muted)}
+.carry-pos{color:var(--green)}.carry-neg{color:var(--red)}
+.ob-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;font-size:.78rem}
+.ob-row input{max-width:130px}
+.login-box .alt{display:block;text-align:center;margin-top:12px;font-size:.82rem;color:#2563eb;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>🔐 Buget Tracker</h2>
+    <p id="loginSub">Familia Popa · Acces protejat</p>
+    <div class="login-error" id="loginError"></div>
+    <input type="password" id="loginPass" placeholder="Parola..." autocomplete="current-password">
+    <input type="password" id="loginPass2" placeholder="Repetă parola..." autocomplete="new-password" style="display:none">
+    <button class="btn btn-primary" id="loginBtn" onclick="tryLogin()">Intră</button>
+    <a class="alt" id="loginCancel" style="display:none" onclick="cancelPwdChange()">Anulează</a>
+  </div>
+</div>
+
+<div class="container app-hidden" id="appRoot">
+<header>
+  <h1><span>📊</span> Buget Tracker <small style="font-size:.62em;color:var(--muted);font-weight:500">Familia Popa</small></h1>
+  <div class="header-actions">
+    <button class="btn btn-ghost btn-sm" onclick="exportExcel()" title="Excel pe luni, categorii, total">📊 Excel</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportPDF()" title="PDF pe luni, categorii, total">📄 PDF</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportJSON()" title="Backup JSON">⬇️ JSON</button>
+    <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆️ Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+    <button class="btn btn-ghost btn-sm" onclick="resetData()">🔄 Reset</button>
+    <button class="btn btn-ghost btn-sm" onclick="changePassword()" title="Schimbă parola de pe acest dispozitiv">🔑 Parolă</button>
+    <button class="btn btn-ghost btn-sm" onclick="openCatModal()">📁 Categorii</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('expense')">+ Cheltuială</button>
+    <button class="btn btn-success btn-sm" onclick="openModal('income')">+ Venit</button>
+  </div>
+</header>
+
+<div class="hero">
+  <div>
+    <div class="t">Dashboard Familia Popa</div>
+    <div class="s" id="heroSub">—</div>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <span class="pill" id="heroInc">—</span>
+    <span class="pill" id="heroExp">—</span>
+  </div>
+</div>
+
+<div class="period-bar">
+  <label>An:</label>
+  <button class="btn btn-ghost btn-sm" onclick="changeYear(-1)">◀</button>
+  <select id="selYear" onchange="onPeriodChange()"></select>
+  <button class="btn btn-ghost btn-sm" onclick="changeYear(1)">▶</button>
+  <span style="color:var(--border)">|</span>
+  <label>Vizualizare:</label>
+  <select id="selView" onchange="onPeriodChange()">
+    <option value="year">An întreg</option>
+    <optgroup label="Semestre">
+      <option value="s1">S1 (Ian–Iun)</option>
+      <option value="s2">S2 (Iul–Dec)</option>
+    </optgroup>
+    <optgroup label="Trimestre">
+      <option value="q1">T1 (Ian–Mar)</option>
+      <option value="q2">T2 (Apr–Iun)</option>
+      <option value="q3">T3 (Iul–Sep)</option>
+      <option value="q4">T4 (Oct–Dec)</option>
+    </optgroup>
+    <optgroup label="Luni">
+      <option value="m1">Ianuarie</option>
+      <option value="m2">Februarie</option>
+      <option value="m3">Martie</option>
+      <option value="m4">Aprilie</option>
+      <option value="m5">Mai</option>
+      <option value="m6">Iunie</option>
+      <option value="m7">Iulie</option>
+      <option value="m8">August</option>
+      <option value="m9">Septembrie</option>
+      <option value="m10">Octombrie</option>
+      <option value="m11">Noiembrie</option>
+      <option value="m12">Decembrie</option>
+    </optgroup>
+  </select>
+  <label style="margin-left:6px">Status:</label>
+  <select id="selStatus" onchange="onStatusFilter()">
+    <option value="all">Toate</option>
+    <option value="active">Active</option>
+    <option value="postponed">Amânate</option>
+    <option value="cancelled">Anulate</option>
+  </select>
+</div>
+
+<div id="closeHint"></div>
+<div class="kpi-grid" id="kpiGrid"></div>
+<div class="cat-grid" id="catGrid"></div>
+
+<div class="charts-grid">
+  <div class="chart-box"><h3>Planificat vs Realizat (active)</h3><div class="chart-wrap"><canvas id="chartProgress"></canvas></div></div>
+  <div class="chart-box"><h3>Sold lunar (cu report)</h3><div class="chart-wrap"><canvas id="chartSold"></canvas></div></div>
+  <div class="chart-box"><h3>Pe categorii</h3><div class="chart-wrap"><canvas id="chartCat"></canvas></div></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-tab="cheltuieli" onclick="switchTab('cheltuieli')">Cheltuieli</button>
+  <button class="tab" data-tab="venituri" onclick="switchTab('venituri')">Venituri</button>
+  <button class="tab" data-tab="lunar" onclick="switchTab('lunar')">Pe luni</button>
+  <button class="tab" data-tab="istoric" onclick="switchTab('istoric')">Istoric</button>
+</div>
+
+<div class="panel active" id="panel-cheltuieli">
+  <div class="month-filter" id="monthFilterExp"></div>
+
+  <div class="search-bar">
+    <input type="text" id="searchExp" placeholder="🔍 Caută denumire / notă..." oninput="onSearch()">
+    <select id="filterCat" onchange="onSearch()">
+      <option value="all">Toate categoriile</option>
+    </select>
+  </div>
+  <div class="card"><h2><span>Lista cheltuieli</span><span style="font-size:.72rem;color:var(--muted)" id="expCount"></span></h2>
+  <table><thead><tr>
+    <th>✓</th><th>Denumire</th><th>Categorie</th><th>Lună</th>
+    <th>Planificat</th><th>Realizat</th><th>Dif.</th><th>Status</th><th>Acțiuni</th>
+  </tr></thead><tbody id="expBody"></tbody></table></div>
+</div>
+
+<div class="panel" id="panel-venituri">
+  <div class="month-filter" id="monthFilterInc"></div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInc" placeholder="🔍 Caută sursă / notă..." oninput="onSearch()">
+  </div>
+  <div class="card"><h2><span>Lista venituri</span><span style="font-size:.72rem;color:var(--muted)" id="incCount"></span></h2>
+  <table><thead><tr>
+    <th>✓</th><th>Sursă</th><th>Lună</th><th>Planificat</th><th>Realizat</th><th>Dif.</th><th>Status</th><th>Acțiuni</th>
+  </tr></thead><tbody id="incBody"></tbody></table></div>
+</div>
+
+<div class="panel" id="panel-lunar">
+  <div class="card">
+    <h2>Vizualizare lunară – <span id="lunarYearLabel"></span></h2>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px">Soldul rămas la finalul unei luni <b>închise</b> (pozitiv sau negativ) se adaugă la veniturile lunii următoare. Pentru lunile încă deschise, report-ul este estimat din buget. Sumele introduse nu sunt modificate niciodată. Click pe o lună pentru filtrare în Cheltuieli/Venituri.</p>
+    <div class="ob-row"><label for="openingBal">Sold inițial (înainte de <span id="lunarStart">prima lună</span>):</label><input type="number" id="openingBal" step="0.01" value="0"><button class="btn btn-ghost btn-sm" onclick="setOpeningBalance()">Salvează</button><span style="color:var(--muted)">lei · poate fi negativ</span></div>
+    <div class="month-cards" id="monthCards"></div>
+  </div>
+  <div class="card">
+    <h2>Grafic comparativ pe luni</h2>
+    <div class="lunar-chart-wrap"><canvas id="chartLunar"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>Tabel detaliat pe luni (cu report de sold)</h2>
+    <table><thead><tr>
+      <th>Lună</th><th>Report</th><th>Venituri plan.</th><th>Venituri real.</th><th>Cheltuieli plan.</th><th>Cheltuieli real.</th><th>Sold plan.</th><th>Sold real</th><th>% realizat</th><th>Stare</th>
+    </tr></thead><tbody id="lunarBody"></tbody></table>
+  </div>
+</div>
+
+<div class="panel" id="panel-istoric">
+  <div class="card"><h2>Istoric</h2>
+  <table><thead><tr><th>Data</th><th>Acțiune</th><th>Detalii</th></tr></thead><tbody id="logBody"></tbody></table></div>
+</div>
+</div>
+
+<!-- Modal item -->
+<div class="modal-overlay" id="modal">
+<div class="modal">
+  <h3 id="modalTitle">Adaugă</h3>
+  <form id="itemForm" onsubmit="saveItem(event)">
+    <input type="hidden" id="itemId"><input type="hidden" id="itemType">
+    <div class="form-group"><label>Denumire *</label><input type="text" id="itemName" required></div>
+    <div class="form-row">
+      <div class="form-group"><label>An *</label><select id="itemYear" required></select></div>
+      <div class="form-group"><label>Lună *</label>
+        <select id="itemMonth" required>
+          <option value="1">Ianuarie</option><option value="2">Februarie</option><option value="3">Martie</option>
+          <option value="4">Aprilie</option><option value="5">Mai</option><option value="6">Iunie</option>
+          <option value="7">Iulie</option><option value="8">August</option><option value="9">Septembrie</option>
+          <option value="10">Octombrie</option><option value="11">Noiembrie</option><option value="12">Decembrie</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group" id="catGroup"><label>Categorie *</label><select id="itemCategory"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Planificat (lei) *</label><input type="number" id="itemPlanned" required min="0" step="0.01"></div>
+      <div class="form-group"><label>Realizat (lei)</label><input type="number" id="itemActual" min="0" step="0.01" value="0"></div>
+    </div>
+    <div class="form-group"><label>Note</label><textarea id="itemNotes" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" onclick="closeModal()">Anulează</button>
+      <button type="submit" class="btn btn-primary">Salvează</button>
+    </div>
+  </form>
+</div>
+</div>
+
+<!-- Modal postpone -->
+<div class="modal-overlay" id="postponeModal">
+<div class="modal">
+  <h3>Amână cheltuiala</h3>
+  <p style="font-size:.85rem;color:var(--muted);margin-bottom:12px" id="postponeInfo"></p>
+  <div class="form-row">
+    <div class="form-group"><label>An nou *</label><select id="postYear"></select></div>
+    <div class="form-group"><label>Lună nouă *</label>
+      <select id="postMonth">
+        <option value="1">Ianuarie</option><option value="2">Februarie</option><option value="3">Martie</option>
+        <option value="4">Aprilie</option><option value="5">Mai</option><option value="6">Iunie</option>
+        <option value="7">Iulie</option><option value="8">August</option><option value="9">Septembrie</option>
+        <option value="10">Octombrie</option><option value="11">Noiembrie</option><option value="12">Decembrie</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-group"><label>Notă (opțional)</label><input type="text" id="postNote" placeholder="Motiv amânare..."></div>
+  <div class="modal-actions">
+    <button type="button" class="btn btn-ghost" onclick="closePostpone()">Închide</button>
+    <button type="button" class="btn btn-warning" onclick="confirmPostpone()">Amână în perioada nouă</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal categories -->
+<div class="modal-overlay" id="catModal">
+<div class="modal">
+  <h3>Categorii</h3>
+  <div id="catList" style="margin-bottom:12px"></div>
+  <div class="form-group"><label>Categorie nouă</label><input type="text" id="newCatName" placeholder="Nume..."></div>
+  <div class="modal-actions">
+    <button type="button" class="btn btn-ghost" onclick="closeCatModal()">Închide</button>
+    <button type="button" class="btn btn-primary" onclick="addCategory()">+ Adaugă</button>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ====================== Constante ====================== */
+const MONTH_SHORT={1:'Ian',2:'Feb',3:'Mar',4:'Apr',5:'Mai',6:'Iun',7:'Iul',8:'Aug',9:'Sep',10:'Oct',11:'Nov',12:'Dec'};
+const MONTH_LONG={1:'Ianuarie',2:'Februarie',3:'Martie',4:'Aprilie',5:'Mai',6:'Iunie',7:'Iulie',8:'August',9:'Septembrie',10:'Octombrie',11:'Noiembrie',12:'Decembrie'};
+const DEFAULT_CATEGORIES=[
+  'Plata utilități','Medical Andreea','Medical Cristi','Reparații / Întreținere','Vacanțe',
+  'Cheltuieli casă','Costuri auto','Beauty Cristi','Beauty Andreea','Achiziții produse + haine',
+  'Medicamente','Achiziții electrocasnice','Chirie / Taxe / Impozite','Obligații Andreea',
+  'Alte cheltuieli / Rezerve','Costuri platforme','Fonduri business'
+];
+const CAT_COLORS=['#2563eb','#7c3aed','#dc2626','#ea580c','#0891b2','#16a34a','#ca8a04','#ec4899','#f43f5e','#8b5cf6','#14b8a6','#9333ea','#ef4444','#64748b','#f59e0b','#0ea5e9','#6366f1'];
+const FALLBACK_CAT='Alte cheltuieli / Rezerve';
+const STORAGE_KEY='bugetPopa_v5';          // aceeași cheie ca înainte: sumele deja salvate rămân
+const AUTH_KEY='bugetPopa_auth';
+const PWD_KEY='bugetPopa_pwd';
+const SCHEMA=6;
+const ID_RE=/^[A-Za-z0-9_-]{1,48}$/;
+
+/* ====================== Stare ====================== */
+function emptyState(){return{v:SCHEMA,expenses:[],incomes:[],log:[],categories:[],catColors:{},closedMonths:{},openingBalance:0,year:2026,view:'q4',filterMonth:'all',statusFilter:'all'}}
+let state=emptyState();
+let LEDGER={rows:new Map(),start:null,end:null,lastKey:null};
+let charts={progress:null,sold:null,cat:null,lunar:null};
+let postponeId=null;
+let toastTimer=null;
+
+/* ====================== Utilitare ====================== */
+const $=id=>document.getElementById(id);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const mk=(y,m)=>y*12+(m-1);
+const ymKey=(y,m)=>y+'-'+m;
+const nextMonth=(y,m)=>m===12?{y:y+1,m:1}:{y,m:m+1};
+const nowKey=()=>{const d=new Date();return mk(d.getFullYear(),d.getMonth()+1)};
+const sum=(l,f)=>l.reduce((s,x)=>s+f(x),0);
+const isActive=e=>!e.status||e.status==='active';
+const planOf=e=>isActive(e)?(Number(e.planned)||0):0;   // la plan contează doar cheltuielile active
+const realOf=e=>Number(e.actual)||0;                    // suma plătită contează indiferent de status
+const isPaid=e=>(Number(e.actual)||0)>0&&Number(e.actual)>=Number(e.planned||0);
+function fmt(n){const r=Math.round(Number(n)||0)||0;return r.toLocaleString('ro-RO',{maximumFractionDigits:0})}
+function sgn(n){const r=Math.round(Number(n)||0)||0;return(r>0?'+':'')+fmt(r)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(m,t='success'){const e=$('toast');e.textContent=m;e.className='toast show '+t;clearTimeout(toastTimer);toastTimer=setTimeout(()=>e.classList.remove('show'),2600)}
+function log(a,d){state.log.unshift({ts:new Date().toISOString(),action:a,details:d});if(state.log.length>200)state.log=state.log.slice(0,200)}
+function catColor(c){return state.catColors[c]||'#94a3b8'}
+function cleanNotes(n){return String(n||'').split(' | ').filter(p=>p&&!p.startsWith('Amânat →')&&p!=='ANULAT').join(' | ')}
+
+/* ====================== Validare / migrare date ====================== */
+function safeId(id,seen){
+  let s=(typeof id==='string'||typeof id==='number')?String(id):'';
+  if(!ID_RE.test(s)||seen.has(s))s=uid();
+  seen.add(s);return s;
+}
+function normItem(x,kind,seen){
+  if(!x||typeof x!=='object'||Array.isArray(x))throw new Error('intrare invalidă');
+  const name=String(x.name==null?'':x.name).trim().slice(0,200);
+  const year=Math.trunc(Number(x.year)),month=Math.trunc(Number(x.month));
+  const planned=Number(x.planned==null?0:x.planned),actual=Number(x.actual==null?0:x.actual);
+  if(!name||!(year>=2000&&year<=2100)||!(month>=1&&month<=12)||!Number.isFinite(planned)||planned<0||!Number.isFinite(actual)||actual<0)
+    throw new Error('intrare invalidă: '+(name||'(fără denumire)')+' '+month+'/'+year);
+  const it={id:safeId(x.id,seen),name,year,month,planned,actual,notes:String(x.notes==null?'':x.notes).slice(0,500)};
+  const b=Number(x.actualBeforePaid);
+  if(x.actualBeforePaid!=null&&Number.isFinite(b)&&b>=0&&b<planned)it.actualBeforePaid=b;
+  if(kind==='expense'){
+    it.category=String(x.category||FALLBACK_CAT).trim().slice(0,100)||FALLBACK_CAT;
+    it.status=['active','postponed','cancelled'].includes(x.status)?x.status:'active';
+    it.paid=isPaid(it);                       // derivat din sume: o singură sursă de adevăr
+    if(typeof x.postponedTo==='string'&&ID_RE.test(x.postponedTo))it.postponedTo=x.postponedTo;
+    if(typeof x.postponedFrom==='string'&&ID_RE.test(x.postponedFrom))it.postponedFrom=x.postponedFrom;
+  }else{
+    it.received=isPaid(it);
+  }
+  return it;
+}
+function normList(list,kind,strict,info){
+  const seen=new Set();
+  return list.map(x=>{try{return normItem(x,kind,seen)}catch(err){if(strict)throw err;info.skipped++;return null}}).filter(Boolean);
+}
+function assignColors(s){
+  const used=new Set(Object.values(s.catColors));
+  s.categories.forEach(c=>{
+    if(s.catColors[c])return;
+    const free=CAT_COLORS.find(x=>!used.has(x));
+    const col=free||CAT_COLORS[Object.keys(s.catColors).length%CAT_COLORS.length];
+    s.catColors[c]=col;used.add(col);
+  });
+}
+function normState(raw,strict){
+  if(!raw||typeof raw!=='object'||!Array.isArray(raw.expenses)||!Array.isArray(raw.incomes))
+    throw new Error('fișierul nu conține liste de cheltuieli și venituri');
+  const info={skipped:0},s=emptyState();
+  s.expenses=normList(raw.expenses,'expense',strict,info);
+  s.incomes=normList(raw.incomes,'income',strict,info);
+  s.log=Array.isArray(raw.log)?raw.log.filter(l=>l&&typeof l==='object').slice(0,200)
+    .map(l=>({ts:String(l.ts||new Date().toISOString()),action:String(l.action||'').slice(0,80),details:String(l.details||'').slice(0,300)})):[];
+  const cats=Array.isArray(raw.categories)?raw.categories.map(c=>String(c).trim().slice(0,100)).filter(Boolean):[];
+  s.categories=[...new Set(cats.length?cats:DEFAULT_CATEGORIES)];
+  s.expenses.forEach(e=>{if(!s.categories.includes(e.category))s.categories.push(e.category)});
+  if(raw.catColors&&typeof raw.catColors==='object'){
+    s.categories.forEach(c=>{const v=raw.catColors[c];if(typeof v==='string'&&/^#[0-9a-fA-F]{6}$/.test(v))s.catColors[c]=v});
+  }
+  assignColors(s);
+  if(raw.closedMonths&&typeof raw.closedMonths==='object'){
+    Object.keys(raw.closedMonths).forEach(k=>{if(/^\d{4}-(?:[1-9]|1[0-2])$/.test(k))s.closedMonths[k]=String(raw.closedMonths[k]).slice(0,40)});
+  }
+  const ob=Number(raw.openingBalance);s.openingBalance=Number.isFinite(ob)?ob:0;
+  const yr=Math.trunc(Number(raw.year));s.year=(yr>=2000&&yr<=2100)?yr:2026;
+  s.view=/^(year|s[12]|q[1-4]|m(?:[1-9]|1[0-2]))$/.test(String(raw.view))?raw.view:'q4';
+  s.filterMonth=(raw.filterMonth==='all'||/^(?:[1-9]|1[0-2])$/.test(String(raw.filterMonth)))?String(raw.filterMonth):'all';
+  s.statusFilter=['all','active','postponed','cancelled'].includes(raw.statusFilter)?raw.statusFilter:'all';
+  return{state:s,skipped:info.skipped};
+}
+
+/* ====================== Încărcare / salvare ====================== */
+function load(){
+  let raw=null;
+  try{raw=localStorage.getItem(STORAGE_KEY)}catch{}
+  if(raw){
+    try{
+      const r=normState(JSON.parse(raw),false);
+      if(r.skipped){
+        try{localStorage.setItem(STORAGE_KEY+'_backup_'+Date.now(),raw)}catch{}
+        setTimeout(()=>toast(r.skipped+' intrări invalide au fost ignorate (copie de siguranță păstrată local)','error'),300);
+      }
+      state=r.state;
+    }catch(err){
+      // nu pierdem datele: păstrăm textul brut sub altă cheie, apoi pornim de la valorile implicite
+      try{localStorage.setItem(STORAGE_KEY+'_corupt_'+Date.now(),raw)}catch{}
+      console.error('Date salvate invalide:',err);
+      initDefaults();
+      setTimeout(()=>toast('Datele salvate nu au putut fi citite; copia a fost păstrată local. S-a încărcat bugetul implicit.','error'),300);
+    }
+  }else initDefaults();
+  ensureYearSelect();
+}
+function initDefaults(){
+  state=emptyState();
+  const info={skipped:0};
+  state.expenses=normList(typeof DEFAULT_EXPENSES!=='undefined'?DEFAULT_EXPENSES.map(e=>({...e,id:undefined})):[],'expense',false,info);
+  state.incomes=normList(typeof DEFAULT_INCOMES!=='undefined'?DEFAULT_INCOMES.map(i=>({...i,id:undefined})):[],'income',false,info);
+  state.categories=[...DEFAULT_CATEGORIES];
+  state.expenses.forEach(e=>{if(!state.categories.includes(e.category))state.categories.push(e.category)});
+  assignColors(state);
+  state.log=[{ts:new Date().toISOString(),action:'Inițializare',details:'Buget Sep 2026 – Dec 2027 încărcat'}];
+  save(false);
+}
+function save(show=true){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state))}
+  catch{toast('Nu s-a putut salva în browser (spațiu sau permisiuni). Exportă un backup JSON!','error');return false}
+  if(show)toast('Salvat ✓','success');
+  return true;
+}
+
+/* ====================== Autentificare (fără parolă în cod) ====================== */
+let authMode='login',changingPwd=false,failCount=0,authBusy=false;
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const hasSubtle=()=>!!(window.crypto&&crypto.subtle&&crypto.subtle.importKey);
+function weakHash(p,s){
+  let h1=0xdeadbeef,h2=0x41c6ce57;const str=s+'|'+p;
+  for(let i=0;i<str.length;i++){const ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return String(4294967296*(2097151&h2)+(h1>>>0));
+}
+async function derive(p,saltB64,iter,kind){
+  if(kind==='pbkdf2'){
+    const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(p),'PBKDF2',false,['deriveBits']);
+    return b64(await crypto.subtle.deriveBits({name:'PBKDF2',hash:'SHA-256',salt:unb64(saltB64),iterations:iter},km,256));
+  }
+  return weakHash(p,saltB64);
+}
+async function makeRec(p){
+  const s=b64(crypto.getRandomValues(new Uint8Array(16))),f=hasSubtle()?'pbkdf2':'weak',i=150000;
+  return{v:1,f,s,i,h:await derive(p,s,i,f)};
+}
+async function checkPwd(p,rec){
+  if(rec.f==='pbkdf2'&&!hasSubtle())return false;
+  return(await derive(p,rec.s,rec.i,rec.f))===rec.h;
+}
+function getPwdRec(){
+  try{const r=JSON.parse(localStorage.getItem(PWD_KEY)||'null');return(r&&typeof r.h==='string'&&typeof r.s==='string')?r:null}catch{return null}
+}
+function showLogin(mode){
+  authMode=mode;
+  $('loginScreen').style.display='flex';$('appRoot').classList.add('app-hidden');
+  $('loginSub').textContent=mode==='setup'
+    ?(changingPwd?'Alege o parolă nouă (minim 8 caractere) pentru acest dispozitiv.':'Prima utilizare pe acest dispozitiv: alege o parolă (minim 8 caractere).')
+    :'Familia Popa · Acces protejat';
+  $('loginPass2').style.display=mode==='setup'?'block':'none';
+  $('loginPass').autocomplete=mode==='setup'?'new-password':'current-password';
+  $('loginBtn').textContent=mode==='setup'?'Setează parola':'Intră';
+  $('loginCancel').style.display=(mode==='setup'&&changingPwd)?'block':'none';
+  $('loginError').style.display='none';
+}
+function checkAuth(){
+  let ok=false;
+  try{ok=sessionStorage.getItem(AUTH_KEY)==='1'}catch{}
+  if(ok&&!changingPwd){$('loginScreen').style.display='none';$('appRoot').classList.remove('app-hidden');return true}
+  showLogin(changingPwd?'setup':(getPwdRec()?'login':'setup'));
+  return false;
+}
+async function tryLogin(){
+  if(authBusy)return;authBusy=true;
+  const err=m=>{const e=$('loginError');e.textContent=m;e.style.display='block'};
+  try{
+    const p=$('loginPass').value;
+    if(authMode==='setup'){
+      if(p.length<8){err('Parola trebuie să aibă cel puțin 8 caractere');return}
+      if(p!==$('loginPass2').value){err('Parolele nu coincid');return}
+      localStorage.setItem(PWD_KEY,JSON.stringify(await makeRec(p)));
+      changingPwd=false;
+    }else{
+      const rec=getPwdRec();
+      if(!rec||!(await checkPwd(p,rec))){
+        failCount++;err('Parolă incorectă');$('loginPass').value='';
+        await new Promise(r=>setTimeout(r,Math.min(4000,400*Math.pow(2,failCount))));
+        $('loginPass').focus();return;
+      }
+    }
+    failCount=0;
+    try{sessionStorage.setItem(AUTH_KEY,'1')}catch{}
+    $('loginPass').value='';$('loginPass2').value='';$('loginError').style.display='none';
+    $('loginScreen').style.display='none';$('appRoot').classList.remove('app-hidden');
+    render();
+  }catch(e){console.error(e);err('Eroare la verificare: '+e.message)}
+  finally{authBusy=false}
+}
+function changePassword(){changingPwd=true;showLogin('setup');$('loginPass').focus()}
+function cancelPwdChange(){changingPwd=false;checkAuth()}
+document.addEventListener('DOMContentLoaded',()=>{
+  ['loginPass','loginPass2'].forEach(id=>{const i=$(id);if(i)i.addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin()})});
+});
+
+/* ====================== Perioade ====================== */
+function getActiveMonths(){
+  const v=state.view||'year';
+  if(v==='year')return[1,2,3,4,5,6,7,8,9,10,11,12];
+  if(v==='s1')return[1,2,3,4,5,6];
+  if(v==='s2')return[7,8,9,10,11,12];
+  if(v==='q1')return[1,2,3];
+  if(v==='q2')return[4,5,6];
+  if(v==='q3')return[7,8,9];
+  if(v==='q4')return[10,11,12];
+  if(v.startsWith('m')){const n=parseInt(v.slice(1),10);if(n>=1&&n<=12)return[n]}
+  return[1,2,3,4,5,6,7,8,9,10,11,12];
+}
+function filterByPeriod(list){const m=getActiveMonths();return list.filter(x=>x.year===state.year&&m.includes(x.month))}
+function ensureYearSelect(){
+  const sel=$('selYear');
+  const years=new Set([state.year,2025,2026,2027,2028]);
+  state.expenses.forEach(e=>years.add(e.year));state.incomes.forEach(i=>years.add(i.year));
+  sel.innerHTML=[...years].sort((a,b)=>a-b).map(y=>`<option value="${y}" ${y===state.year?'selected':''}>${y}</option>`).join('');
+  $('selView').value=state.view||'q4';
+  $('selStatus').value=state.statusFilter||'all';
+}
+function onPeriodChange(){state.year=+$('selYear').value;state.view=$('selView').value;state.filterMonth='all';save(false);render()}
+function onStatusFilter(){state.statusFilter=$('selStatus').value;save(false);render()}
+function changeYear(d){
+  state.year+=d;const sel=$('selYear');
+  if(![...sel.options].some(o=>+o.value===state.year)){const o=document.createElement('option');o.value=state.year;o.textContent=state.year;sel.appendChild(o)}
+  sel.value=state.year;state.filterMonth='all';save(false);render();
+}
+
+/* ====================== Registru lunar cu report de sold ====================== */
+/* Regula: soldul rămas la finalul unei luni ÎNCHISE (real = venituri realizate − cheltuieli realizate,
+   pozitiv sau negativ) se adaugă la veniturile lunii următoare. Luna încă deschisă raportează un sold
+   estimat din buget (plan). Nimic din sumele introduse nu se modifică: report-ul este calculat. */
+function buildLedger(){
+  const agg=new Map();
+  const add=(y,m,k,v)=>{const key=mk(y,m);let a=agg.get(key);if(!a){a={ip:0,ia:0,ep:0,ea:0};agg.set(key,a)}a[k]+=v};
+  state.incomes.forEach(i=>{add(i.year,i.month,'ip',i.planned||0);add(i.year,i.month,'ia',i.actual||0)});
+  state.expenses.forEach(e=>{add(e.year,e.month,'ep',planOf(e));add(e.year,e.month,'ea',realOf(e))});
+  const L={rows:new Map(),start:null,end:null,lastKey:null};
+  if(!agg.size)return L;
+  const keys=[...agg.keys()];
+  const start=Math.min(...keys),last=Math.max(...keys),end=Math.max(last,mk(state.year,12));
+  L.start=start;L.end=end;L.lastKey=last;
+  let open=Number(state.openingBalance)||0;
+  for(let k=start;k<=end;k++){
+    const a=agg.get(k)||{ip:0,ia:0,ep:0,ea:0};
+    const y=Math.floor(k/12),m=k%12+1;
+    const closed=!!state.closedMonths[ymKey(y,m)];
+    const closeP=open+a.ip-a.ep;        // sold final dacă totul merge după buget
+    const closeR=open+a.ia-a.ea;        // sold final pe sume realizate
+    const close=closed?closeR:closeP;   // ce se raportează în luna următoare
+    L.rows.set(k,{y,m,ip:a.ip,ia:a.ia,ep:a.ep,ea:a.ea,open,closeP,closeR,close,closed});
+    open=close;
+  }
+  return L;
+}
+function rowFor(y,m){
+  return LEDGER.rows.get(mk(y,m))||{y,m,ip:0,ia:0,ep:0,ea:0,open:0,closeP:0,closeR:0,close:0,closed:false};
+}
+function periodOpening(y,months){
+  const k0=mk(y,months[0]);
+  if(LEDGER.start==null)return Number(state.openingBalance)||0;
+  if(k0>=LEDGER.start){const r=LEDGER.rows.get(k0);return r?r.open:0}
+  return mk(y,months[months.length-1])>=LEDGER.start?(Number(state.openingBalance)||0):0;
+}
+const hasData=r=>!!(r.ip||r.ia||r.ep||r.ea);
+function closeMonth(y,m){
+  const r=rowFor(y,m);
+  if(mk(y,m)>nowKey()){toast('Luna nu a început încă','error');return}
+  const nx=nextMonth(y,m);
+  const unpaid=state.expenses.filter(e=>e.year===y&&e.month===m&&isActive(e)&&!isPaid(e)).length;
+  const msg=`Închizi luna ${MONTH_LONG[m]} ${y}?\n\nSold real al lunii (cu report): ${sgn(r.closeR)} lei\nSe ${r.closeR>=0?'adaugă la':'scade din'} veniturile din ${MONTH_LONG[nx.m]} ${nx.y}.`
+    +(unpaid?`\n\nAtenție: ${unpaid} cheltuieli active nu sunt marcate plătite; rămân neplătite în acest sold (le poți amâna sau anula înainte).`:'')
+    +`\n\nSumele introduse nu se modifică, iar luna se poate redeschide oricând.`;
+  if(!confirm(msg))return;
+  state.closedMonths[ymKey(y,m)]=new Date().toISOString();
+  log('Închidere lună',`${MONTH_SHORT[m]} ${y}: sold ${fmt(r.closeR)} lei raportat în ${MONTH_SHORT[nx.m]} ${nx.y}`);
+  save(false);render();toast(`Luna ${MONTH_SHORT[m]} închisă · ${sgn(r.closeR)} lei reportat în ${MONTH_SHORT[nx.m]}`,'success');
+}
+function reopenMonth(y,m){
+  if(!confirm(`Redeschizi luna ${MONTH_LONG[m]} ${y}? Report-ul către luna următoare revine la estimarea din buget.`))return;
+  delete state.closedMonths[ymKey(y,m)];
+  log('Redeschidere lună',`${MONTH_SHORT[m]} ${y}`);
+  save(false);render();toast('Lună redeschisă','success');
+}
+function setOpeningBalance(){
+  const v=Number($('openingBal').value);
+  if(!Number.isFinite(v)){toast('Sumă invalidă','error');return}
+  state.openingBalance=v;log('Sold inițial',fmt(v)+' lei');save();render();
+}
+
+/* ====================== Randare ====================== */
+function statusBadge(e){
+  if(e.status==='postponed')return'<span class="badge badge-postponed">Amânat</span>';
+  if(e.status==='cancelled')return'<span class="badge badge-cancelled">Anulat</span>';
+  if(isPaid(e))return'<span class="badge badge-ok">Plătit</span>';
+  if(e.actual>0)return'<span class="badge badge-partial">Parțial</span>';
+  return'<span class="badge badge-pending">În așteptare</span>';
+}
+function render(){
+  if(!checkAuth())return;
+  LEDGER=buildLedger();
+  ensureYearSelect();populateCatFilter();renderHero();renderCloseHint();renderKPIs();renderCatGrid();renderMonthFilters();
+  renderExpenses();renderIncomes();renderLunar();renderLog();renderCharts();
+}
+function renderKeepFocus(){
+  const a=document.activeElement,k=a&&a.dataset?a.dataset.fk:null;
+  render();
+  if(k){const n=document.querySelector(`[data-fk="${k}"]`);if(n){n.focus();if(n.select)n.select()}}
+}
+function populateCatFilter(){
+  const sel=$('filterCat');if(!sel)return;
+  const cur=sel.value||'all';
+  sel.innerHTML='<option value="all">Toate categoriile</option>'+state.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  sel.value=state.categories.includes(cur)?cur:'all';
+}
+function renderHero(){
+  const el=$('heroSub');if(!el)return;
+  if(LEDGER.start==null){el.textContent='Niciun buget încă · adaugă venituri și cheltuieli';return}
+  const f=k=>`${MONTH_SHORT[k%12+1]} ${Math.floor(k/12)}`;
+  el.textContent=`${f(LEDGER.start)} – ${f(LEDGER.lastKey)} · Soldul lunilor închise se reportă automat`;
+}
+function renderCloseHint(){
+  const el=$('closeHint');if(!el)return;
+  const cur=nowKey();let target=null;
+  if(LEDGER.start!=null){
+    for(let k=LEDGER.start;k<cur&&k<=LEDGER.lastKey;k++){
+      const r=LEDGER.rows.get(k);
+      if(r&&!r.closed&&hasData(r)){target=r;break}
+    }
+  }
+  if(!target){el.innerHTML='';return}
+  const nx=nextMonth(target.y,target.m);
+  el.innerHTML=`<div class="hint-bar"><span>🔔 <b>${MONTH_LONG[target.m]} ${target.y}</b> s-a încheiat. Închide luna ca soldul real (<b>${sgn(target.closeR)} lei</b>) să se adauge la veniturile din ${MONTH_LONG[nx.m]} ${nx.y}.</span>
+    <button class="btn btn-primary btn-sm" onclick="closeMonth(${target.y},${target.m})">Închide luna</button></div>`;
+}
+function renderKPIs(){
+  const months=getActiveMonths();
+  const exAll=filterByPeriod(state.expenses),ex=exAll.filter(isActive),inc=filterByPeriod(state.incomes);
+  const ep=sum(exAll,planOf),ea=sum(exAll,realOf);
+  const ip=sum(inc,i=>i.planned||0),ia=sum(inc,i=>i.actual||0);
+  const open=periodOpening(state.year,months);
+  const prev=LEDGER.rows.get(mk(state.year,months[0])-1);
+  const openSub=prev?`Din ${MONTH_SHORT[prev.m]} ${prev.y} (${prev.closed?'închisă':'estimat, neînchisă'})`:(open?'Sold inițial':'Fără report');
+  const postponed=exAll.filter(e=>e.status==='postponed').length;
+  const cancelled=exAll.filter(e=>e.status==='cancelled').length;
+  const paid=ex.filter(isPaid).length;
+  const ePct=ep?Math.round(ea/ep*100):0,iPct=ip?Math.round(ia/ip*100):0;
+  const sP=open+ip-ep,sA=open+ia-ea;
+  $('heroInc').textContent=fmt(ip)+' lei venituri';
+  $('heroExp').textContent=fmt(ep)+' lei cheltuieli active';
+  $('kpiGrid').innerHTML=`
+    <div class="kpi ${open>0?'positive':open<0?'negative':''}"><div class="label">Report la început</div><div class="value">${sgn(open)}</div><div class="sub">${esc(openSub)}</div></div>
+    <div class="kpi"><div class="label">Venituri plan.</div><div class="value">${fmt(ip)}</div><div class="sub">Realizat ${fmt(ia)} (${iPct}%)</div>
+      <div class="progress-wrap"><div class="progress-bar"><div class="green" style="width:${Math.min(iPct,100)}%"></div></div></div></div>
+    <div class="kpi"><div class="label">Cheltuieli active</div><div class="value">${fmt(ep)}</div><div class="sub">Realizat ${fmt(ea)} (${ePct}%)</div>
+      <div class="progress-wrap"><div class="progress-bar"><div class="red" style="width:${Math.min(ePct,100)}%"></div></div></div></div>
+    <div class="kpi ${sP>=0?'positive':'negative'}"><div class="label">Sold planificat</div><div class="value">${fmt(sP)}</div><div class="sub">Report + Venituri − Cheltuieli active</div></div>
+    <div class="kpi ${sA>=0?'positive':'negative'}"><div class="label">Sold realizat</div><div class="value">${fmt(sA)}</div><div class="sub">Report + sume introduse</div></div>
+    <div class="kpi"><div class="label">Progres / Amânate / Anulate</div><div class="value">${paid}/${ex.length}</div><div class="sub">⏱ ${postponed} amânate · ✕ ${cancelled} anulate</div></div>`;
+}
+function renderCatGrid(){
+  const all=filterByPeriod(state.expenses);
+  $('catGrid').innerHTML=state.categories.map(cat=>{
+    const items=all.filter(e=>e.category===cat);
+    const p=sum(items,planOf),a=sum(items,realOf);
+    if(!p&&!a)return'';
+    return`<div class="cat-card"><div class="cat-name"><span class="cat-dot" style="background:${catColor(cat)}"></span>${esc(cat)}</div>
+      <div class="cat-val">${fmt(p)}</div><div class="cat-sub">Realizat: ${fmt(a)}</div></div>`;
+  }).join('');
+}
+function renderMonthFilters(){
+  const months=getActiveMonths();
+  let h=`<button class="month-btn ${state.filterMonth==='all'?'active':''}" onclick="setFilter('all')">Toate</button>`;
+  months.forEach(m=>h+=`<button class="month-btn ${state.filterMonth===String(m)?'active':''}" onclick="setFilter('${m}')">${MONTH_SHORT[m]}</button>`);
+  $('monthFilterExp').innerHTML=h;$('monthFilterInc').innerHTML=h;
+}
+function setFilter(m){state.filterMonth=m;save(false);render()}
+function onSearch(){renderExpenses();renderIncomes()}
+
+function renderExpenses(){
+  let list=filterByPeriod(state.expenses);
+  if(state.filterMonth!=='all')list=list.filter(e=>e.month===+state.filterMonth);
+  if(state.statusFilter==='active')list=list.filter(isActive);
+  else if(state.statusFilter==='postponed')list=list.filter(e=>e.status==='postponed');
+  else if(state.statusFilter==='cancelled')list=list.filter(e=>e.status==='cancelled');
+  const catF=($('filterCat')||{}).value||'all';
+  const q=(($('searchExp')||{}).value||'').trim().toLowerCase();
+  if(catF&&catF!=='all')list=list.filter(e=>e.category===catF);
+  if(q)list=list.filter(e=>(e.name||'').toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q));
+  list=[...list].sort((a,b)=>a.month-b.month||(a.category||'').localeCompare(b.category||'')||a.name.localeCompare(b.name));
+  $('expCount').textContent=`${list.length} · ${state.year}`;
+  const tb=$('expBody');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty">Nicio cheltuială.<br><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="openModal('expense')">+ Adaugă</button></div></td></tr>`;return}
+  tb.innerHTML=list.map(e=>{
+    const d=(e.actual||0)-(e.planned||0),dc=d>0?'diff-neg':d<0?'diff-pos':'';
+    const rowClass=e.status==='postponed'?'row-postponed':e.status==='cancelled'?'row-cancelled':'';
+    const canAct=isActive(e);
+    return`<tr class="${rowClass}">
+      <td><input type="checkbox" class="check" ${isPaid(e)?'checked':''} ${!canAct?'disabled':''} onchange="togglePaid('${e.id}','expense')"></td>
+      <td><strong>${esc(e.name)}</strong>${e.notes?`<br><small style="color:var(--muted)">${esc(e.notes)}</small>`:''}</td>
+      <td><span class="cat-dot" style="background:${catColor(e.category)}"></span>${esc(e.category)}</td>
+      <td>${MONTH_SHORT[e.month]} ${e.year}</td>
+      <td class="amount planned">${fmt(e.planned)}</td>
+      <td class="amount">${canAct?`<input type="number" data-fk="a-${e.id}" value="${e.actual||0}" min="0" step="1" style="max-width:85px" onchange="updateActual('${e.id}',this.value,'expense')" onfocus="this.select()">`:fmt(e.actual)}</td>
+      <td class="amount ${dc}">${d===0?'—':(d>0?'+':'')+fmt(d)}</td>
+      <td>${statusBadge(e)}</td>
+      <td class="actions-cell">
+        ${canAct?`
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="editItem('${e.id}','expense')" title="Editează">✏️</button>
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="openPostpone('${e.id}')" title="Amână">⏱</button>
+          <button class="btn btn-ghost btn-icon btn-sm" onclick="cancelExpense('${e.id}')" title="Anulează cheltuiala">✕</button>
+        `:`<button class="btn btn-ghost btn-icon btn-sm" onclick="reactivate('${e.id}')" title="Reactivează">↩</button>`}
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="deleteItem('${e.id}','expense')" title="Șterge definitiv">🗑️</button>
+      </td></tr>`;
+  }).join('');
+}
+function renderIncomes(){
+  let list=filterByPeriod(state.incomes);
+  if(state.filterMonth!=='all')list=list.filter(e=>e.month===+state.filterMonth);
+  const q=(($('searchInc')||{}).value||'').trim().toLowerCase();
+  if(q)list=list.filter(e=>(e.name||'').toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q));
+  list=[...list].sort((a,b)=>a.month-b.month||a.name.localeCompare(b.name));
+  $('incCount').textContent=`${list.length} · ${state.year}`;
+  const tb=$('incBody');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty">Niciun venit.<br><button class="btn btn-success btn-sm" style="margin-top:8px" onclick="openModal('income')">+ Adaugă</button></div></td></tr>`;return}
+  tb.innerHTML=list.map(e=>{
+    const d=(e.actual||0)-(e.planned||0),dc=d>=0?'diff-pos':'diff-neg';
+    return`<tr>
+      <td><input type="checkbox" class="check" ${isPaid(e)?'checked':''} onchange="togglePaid('${e.id}','income')"></td>
+      <td><strong>${esc(e.name)}</strong>${e.notes?`<br><small style="color:var(--muted)">${esc(e.notes)}</small>`:''}</td>
+      <td>${MONTH_SHORT[e.month]} ${e.year}</td>
+      <td class="amount planned">${fmt(e.planned)}</td>
+      <td class="amount"><input type="number" data-fk="i-${e.id}" value="${e.actual||0}" min="0" step="1" style="max-width:85px" onchange="updateActual('${e.id}',this.value,'income')" onfocus="this.select()"></td>
+      <td class="amount ${dc}">${d===0?'—':(d>0?'+':'')+fmt(d)}</td>
+      <td>${isPaid(e)?'<span class="badge badge-ok">Încasat</span>':(e.actual>0?'<span class="badge badge-partial">Parțial</span>':'<span class="badge badge-pending">În așteptare</span>')}</td>
+      <td class="actions-cell">
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="editItem('${e.id}','income')">✏️</button>
+        <button class="btn btn-ghost btn-icon btn-sm" onclick="deleteItem('${e.id}','income')">🗑️</button>
+      </td></tr>`;
+  }).join('');
+}
+
+function renderLunar(){
+  const months=getActiveMonths(),nk=nowKey();
+  $('lunarYearLabel').textContent=state.year;
+  $('lunarStart').textContent=LEDGER.start!=null?`${MONTH_SHORT[LEDGER.start%12+1]} ${Math.floor(LEDGER.start/12)}`:'prima lună';
+  const ob=$('openingBal');if(ob&&document.activeElement!==ob)ob.value=state.openingBalance||0;
+  let rows='',tIP=0,tIA=0,tEP=0,tEA=0;
+  const cards=[],labels=[],planInc=[],actInc=[],planExp=[],actExp=[];
+  months.forEach(m=>{
+    const r=rowFor(state.year,m),k=mk(state.year,m),nx=nextMonth(state.year,m);
+    const pct=r.ep?Math.round(r.ea/r.ep*100):0;
+    tIP+=r.ip;tIA+=r.ia;tEP+=r.ep;tEA+=r.ea;
+    labels.push(MONTH_SHORT[m]);planInc.push(r.ip);actInc.push(r.ia);planExp.push(r.ep);actExp.push(r.ea);
+    const canClose=!r.closed&&k<=nk&&hasData(r);
+    const foot=r.closed
+      ?`<span>🔒 Închisă · ${sgn(r.closeR)} lei → ${MONTH_SHORT[nx.m]}</span><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();reopenMonth(${state.year},${m})">Redeschide</button>`
+      :canClose
+        ?`<span>Deschisă · estimat → ${MONTH_SHORT[nx.m]}: ${sgn(r.closeP)}</span><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();closeMonth(${state.year},${m})">Închide luna</button>`
+        :`<span>Deschisă · estimat → ${MONTH_SHORT[nx.m]}: ${sgn(r.closeP)}</span>`;
+    cards.push(`<div class="month-card ${r.close>=0?'surplus':'deficit'} ${r.closed?'closed':''}" onclick="jumpToMonth(${m})" title="Filtrează luna ${MONTH_SHORT[m]}">
+      <div class="mc-title"><span>${MONTH_SHORT[m]} ${state.year}</span><span class="badge ${r.close>=0?'badge-ok':'badge-pending'}">${sgn(r.close)}</span></div>
+      <div class="mc-row"><span class="lbl">Report din luna ant.</span><span class="val ${r.open>0?'carry-pos':r.open<0?'carry-neg':''}">${sgn(r.open)}</span></div>
+      <div class="mc-row"><span class="lbl">Venituri plan.</span><span class="val">${fmt(r.ip)}</span></div>
+      <div class="mc-row"><span class="lbl">Venituri real.</span><span class="val">${fmt(r.ia)}</span></div>
+      <div class="mc-row"><span class="lbl">Cheltuieli plan.</span><span class="val">${fmt(r.ep)}</span></div>
+      <div class="mc-row"><span class="lbl">Cheltuieli real.</span><span class="val">${fmt(r.ea)}</span></div>
+      <div class="mc-bar"><div style="width:${Math.min(pct,100)}%;background:${pct>=100?'var(--red)':'var(--accent)'}"></div></div>
+      <div class="mc-row" style="margin-top:4px"><span class="lbl">Realizat cheltuieli</span><span class="val">${pct}%</span></div>
+      <div class="mc-row" style="margin-top:6px"><span class="lbl">Sold plan. (cu report)</span><span class="val" style="color:${r.closeP>=0?'var(--green)':'var(--red)'}">${sgn(r.closeP)}</span></div>
+      <div class="mc-sold"><span>Sold real (cu report)</span><span style="color:${r.closeR>=0?'var(--green)':'var(--red)'}">${sgn(r.closeR)}</span></div>
+      <div class="mc-foot">${foot}</div>
+    </div>`);
+    rows+=`<tr style="cursor:pointer" onclick="jumpToMonth(${m})">
+      <td><strong>${MONTH_SHORT[m]} ${state.year}</strong></td>
+      <td class="amount ${r.open>0?'diff-pos':r.open<0?'diff-neg':''}">${sgn(r.open)}</td>
+      <td class="amount">${fmt(r.ip)}</td><td class="amount">${fmt(r.ia)}</td>
+      <td class="amount">${fmt(r.ep)}</td><td class="amount">${fmt(r.ea)}</td>
+      <td class="amount ${r.closeP>=0?'diff-pos':'diff-neg'}">${fmt(r.closeP)}</td>
+      <td class="amount ${r.closeR>=0?'diff-pos':'diff-neg'}">${fmt(r.closeR)}</td>
+      <td class="amount">${pct}%</td>
+      <td>${r.closed?'<span class="badge badge-closed">🔒 Închisă</span>':'<span class="badge badge-pending">Deschisă</span>'}</td></tr>`;
+  });
+  $('monthCards').innerHTML=cards.join('')||'<div class="empty">Nicio lună în perioada selectată</div>';
+  const open=periodOpening(state.year,months),sP=open+tIP-tEP,sA=open+tIA-tEA;
+  rows+=`<tr style="font-weight:700;background:var(--card2)"><td>TOTAL</td>
+    <td class="amount">${sgn(open)}</td>
+    <td class="amount">${fmt(tIP)}</td><td class="amount">${fmt(tIA)}</td>
+    <td class="amount">${fmt(tEP)}</td><td class="amount">${fmt(tEA)}</td>
+    <td class="amount ${sP>=0?'diff-pos':'diff-neg'}">${fmt(sP)}</td>
+    <td class="amount ${sA>=0?'diff-pos':'diff-neg'}">${fmt(sA)}</td>
+    <td class="amount">${tEP?Math.round(tEA/tEP*100):0}%</td><td></td></tr>`;
+  $('lunarBody').innerHTML=rows;
+  if(typeof Chart==='undefined')return;
+  if(charts.lunar)charts.lunar.destroy();
+  const ctx=$('chartLunar');
+  if(ctx){
+    charts.lunar=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+      {label:'Venituri plan.',data:planInc,backgroundColor:'rgba(22,163,74,.5)',borderRadius:3},
+      {label:'Venituri real.',data:actInc,backgroundColor:'rgba(22,163,74,.85)',borderRadius:3},
+      {label:'Cheltuieli plan.',data:planExp,backgroundColor:'rgba(220,38,38,.4)',borderRadius:3},
+      {label:'Cheltuieli real.',data:actExp,backgroundColor:'rgba(220,38,38,.75)',borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7c93',font:{size:11}}}},
+        scales:{x:{ticks:{color:'#6b7c93'},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{color:'#6b7c93'},grid:{color:'rgba(0,0,0,.04)'}}}}});
+  }
+}
+function jumpToMonth(m){
+  state.filterMonth=String(m);save(false);switchTab('cheltuieli');render();
+  toast('Filtru: '+MONTH_SHORT[m]+' '+state.year,'success');
+}
+function renderLog(){
+  const tb=$('logBody');
+  if(!state.log.length){tb.innerHTML=`<tr><td colspan="3"><div class="empty">Gol</div></td></tr>`;return}
+  tb.innerHTML=state.log.map(l=>{
+    const d=new Date(l.ts);
+    return`<tr><td style="white-space:nowrap;color:var(--muted)">${d.toLocaleString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+      <td><strong>${esc(l.action)}</strong></td><td>${esc(l.details)}</td></tr>`;
+  }).join('');
+}
+function renderCharts(){
+  if(typeof Chart==='undefined')return;
+  const months=getActiveMonths(),labels=months.map(m=>MONTH_SHORT[m]);
+  const rs=months.map(m=>rowFor(state.year,m));
+  const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#6b7c93',font:{size:11}}}},
+    scales:{x:{ticks:{color:'#6b7c93'},grid:{color:'rgba(0,0,0,.04)'}},y:{ticks:{color:'#6b7c93'},grid:{color:'rgba(0,0,0,.04)'}}}};
+  if(charts.progress)charts.progress.destroy();
+  charts.progress=new Chart($('chartProgress'),{type:'bar',data:{labels,datasets:[
+    {label:'Planificat',data:rs.map(r=>r.ep),backgroundColor:'rgba(37,99,235,.5)',borderRadius:3},
+    {label:'Realizat',data:rs.map(r=>r.ea),backgroundColor:'rgba(220,38,38,.55)',borderRadius:3}]},options:opts});
+  if(charts.sold)charts.sold.destroy();
+  charts.sold=new Chart($('chartSold'),{type:'line',data:{labels,datasets:[
+    {label:'Sold plan. (cu report)',data:rs.map(r=>r.closeP),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.07)',fill:true,tension:.3},
+    {label:'Sold real (cu report)',data:rs.map(r=>r.closeR),borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.07)',fill:true,tension:.3}]},options:opts});
+  const ex=filterByPeriod(state.expenses).filter(isActive);
+  const cats=state.categories.filter(c=>ex.some(e=>e.category===c));
+  if(charts.cat)charts.cat.destroy();
+  charts.cat=new Chart($('chartCat'),{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(c=>sum(ex.filter(e=>e.category===c),planOf)),backgroundColor:cats.map(catColor),borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#6b7c93',font:{size:9},boxWidth:10}}}}});
+}
+function switchTab(n){document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===n));document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+n))}
+
+/* ====================== Amânare / anulare ====================== */
+function openPostpone(id){
+  const e=state.expenses.find(x=>x.id===id);if(!e)return;
+  if(isPaid(e)){toast('Cheltuiala e deja plătită integral','error');return}
+  postponeId=id;
+  const rest=e.planned-(e.actual||0);
+  $('postponeInfo').textContent=`${e.name} — ${fmt(e.planned)} lei (${MONTH_SHORT[e.month]} ${e.year})`+(e.actual>0?` · deja plătit ${fmt(e.actual)} lei; se amână restul de ${fmt(rest)} lei`:'');
+  const ys=new Set([e.year,e.year+1,2026,2027,2028]);
+  $('postYear').innerHTML=[...ys].sort((a,b)=>a-b).map(y=>`<option value="${y}">${y}</option>`).join('');
+  $('postYear').value=e.month===12?e.year+1:e.year;
+  $('postMonth').value=e.month===12?1:e.month+1;
+  $('postNote').value='';
+  $('postponeModal').classList.add('show');
+}
+function closePostpone(){$('postponeModal').classList.remove('show');postponeId=null}
+function confirmPostpone(){
+  const e=state.expenses.find(x=>x.id===postponeId);if(!e)return;
+  const ny=+$('postYear').value,nm=+$('postMonth').value,note=$('postNote').value.trim().slice(0,200);
+  if(ny===e.year&&nm===e.month){toast('Alege o altă lună decât cea curentă','error');return}
+  const rest=e.planned-(e.actual||0);
+  if(rest<=0){toast('Cheltuiala e deja plătită integral','error');return}
+  const copy={id:uid(),name:e.name,category:e.category,year:ny,month:nm,planned:rest,actual:0,
+    notes:`Amânat din ${MONTH_SHORT[e.month]} ${e.year}`+(note?' – '+note:''),paid:false,status:'active',postponedFrom:e.id};
+  e.status='postponed';e.postponedTo=copy.id;
+  e.notes=(e.notes?e.notes+' | ':'')+`Amânat → ${MONTH_SHORT[nm]} ${ny}`+(note?' ('+note+')':'');
+  state.expenses.push(copy);
+  log('Amânare',`${e.name}: ${MONTH_SHORT[e.month]} ${e.year} → ${MONTH_SHORT[nm]} ${ny}`+(e.actual>0?` (rest ${fmt(rest)} lei; ${fmt(e.actual)} lei deja plătiți rămân în ${MONTH_SHORT[e.month]})`:''));
+  save();closePostpone();render();
+  toast('Cheltuială amânată și redistribuită','success');
+}
+function cancelExpense(id){
+  const e=state.expenses.find(x=>x.id===id);if(!e)return;
+  if(!confirm(`Anulezi cheltuiala „${e.name}" (${fmt(e.planned)} lei)?\nNu se mai numără în planul lunii.`+(e.actual>0?`\nSuma deja plătită (${fmt(e.actual)} lei) rămâne în realizat.`:'')))return;
+  e.status='cancelled';
+  e.notes=(e.notes?e.notes+' | ':'')+'ANULAT';
+  log('Anulare',`${e.name} (${fmt(e.planned)} lei) – ${MONTH_SHORT[e.month]} ${e.year}`);
+  save();render();toast('Cheltuială anulată','success');
+}
+function reactivate(id){
+  const e=state.expenses.find(x=>x.id===id);if(!e)return;
+  if(e.status==='postponed'&&e.postponedTo){
+    const cp=state.expenses.find(x=>x.id===e.postponedTo);
+    if(cp){
+      if(cp.actual>0||cp.status!=='active'){toast('Copia amânată are plăți sau a fost modificată; rezolv-o manual înainte de reactivare','error');return}
+      if(!confirm(`Reactivezi „${e.name}"?\nCopia amânată din ${MONTH_SHORT[cp.month]} ${cp.year} (${fmt(cp.planned)} lei, neplătită) se elimină ca să nu fie numărată de două ori.`))return;
+      state.expenses=state.expenses.filter(x=>x.id!==cp.id);
+    }
+    delete e.postponedTo;
+  }
+  e.status='active';e.notes=cleanNotes(e.notes);
+  log('Reactivare',e.name);
+  save();render();toast('Cheltuială reactivată','success');
+}
+
+/* ====================== Adăugare / editare ====================== */
+function populateCatSelect(){$('itemCategory').innerHTML=state.categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+function openModal(type,id=null){
+  $('itemType').value=type;$('itemId').value=id||'';
+  $('modalTitle').textContent=id?(type==='expense'?'Editează cheltuială':'Editează venit'):(type==='expense'?'Adaugă cheltuială':'Adaugă venit');
+  $('catGroup').style.display=type==='expense'?'block':'none';
+  populateCatSelect();
+  const ys=new Set([state.year,2025,2026,2027,2028]);state.expenses.forEach(e=>ys.add(e.year));state.incomes.forEach(i=>ys.add(i.year));
+  $('itemYear').innerHTML=[...ys].sort((a,b)=>a-b).map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(id){
+    const item=(type==='expense'?state.expenses:state.incomes).find(x=>x.id===id);
+    if(item){
+      $('itemName').value=item.name;$('itemYear').value=item.year;$('itemMonth').value=item.month;
+      $('itemPlanned').value=item.planned;$('itemActual').value=item.actual||0;$('itemNotes').value=item.notes||'';
+      if(type==='expense')$('itemCategory').value=item.category||state.categories[0];
+    }
+  }else{
+    $('itemForm').reset();$('itemType').value=type;
+    $('itemYear').value=state.year;$('itemActual').value=0;
+    const m=getActiveMonths();if(m.length)$('itemMonth').value=m[0];
+  }
+  $('modal').classList.add('show');$('itemName').focus();
+}
+function closeModal(){$('modal').classList.remove('show')}
+function saveItem(ev){
+  ev.preventDefault();
+  const type=$('itemType').value,id=$('itemId').value;
+  const name=$('itemName').value.trim();
+  const year=+$('itemYear').value,month=+$('itemMonth').value;
+  const planned=Math.max(0,+$('itemPlanned').value||0),actual=Math.max(0,+$('itemActual').value||0);
+  const notes=$('itemNotes').value.trim();
+  const category=type==='expense'?$('itemCategory').value:undefined;
+  if(!name){toast('Denumirea este obligatorie','error');return}
+  if(id){
+    const item=(type==='expense'?state.expenses:state.incomes).find(x=>x.id===id);
+    if(item){
+      if(actual!==item.actual)delete item.actualBeforePaid;
+      Object.assign(item,{name,year,month,planned,actual,notes});
+      if(category)item.category=category;
+      item[type==='expense'?'paid':'received']=isPaid(item);
+      log('Modificare',`${name} (${MONTH_SHORT[month]} ${year})`);
+    }
+  }else{
+    const ni={id:uid(),name,year,month,planned,actual,notes};
+    if(type==='expense'){ni.category=category;ni.status='active';ni.paid=isPaid(ni);state.expenses.push(ni)}
+    else{ni.received=isPaid(ni);state.incomes.push(ni)}
+    log('Adăugare',`${name} – ${fmt(planned)} lei`);
+  }
+  if(year!==state.year)state.year=year;
+  save();closeModal();render();
+}
+function editItem(id,type){openModal(type,id)}
+function deleteItem(id,type){
+  const list=type==='expense'?state.expenses:state.incomes,it=list.find(x=>x.id===id);
+  if(!it)return;
+  if(!confirm(`Ștergi definitiv „${it.name}"?`+(it.actual>0?`\nAtenție: are ${fmt(it.actual)} lei realizați, care vor dispărea din sold.`:'')))return;
+  if(type==='expense')state.expenses=state.expenses.filter(x=>x.id!==id);else state.incomes=state.incomes.filter(x=>x.id!==id);
+  log('Ștergere',it.name);save();render();
+}
+/* „Realizat" și „Plătit" sunt legate: plătit = realizat ≥ planificat. Debifarea readuce suma de dinainte. */
+function updateActual(id,val,type){
+  const item=(type==='expense'?state.expenses:state.incomes).find(x=>x.id===id);if(!item)return;
+  const old=item.actual,v=Number(val),nv=(Number.isFinite(v)&&v>0)?v:0;
+  item.actual=nv;delete item.actualBeforePaid;
+  item[type==='expense'?'paid':'received']=isPaid(item);
+  log('Actualizare',`${item.name}: ${fmt(old)} → ${fmt(nv)}`);
+  save();setTimeout(renderKeepFocus,0);
+}
+function togglePaid(id,type){
+  const item=(type==='expense'?state.expenses:state.incomes).find(x=>x.id===id);if(!item)return;
+  if(type==='expense'&&!isActive(item)){render();return}
+  const flag=type==='expense'?'paid':'received';
+  if(isPaid(item)){
+    if(item.actualBeforePaid==null&&item.actual>item.planned&&!confirm(`Debifezi „${item.name}"? Suma realizată (${fmt(item.actual)} lei) va fi resetată la 0.`)){render();return}
+    item.actual=item.actualBeforePaid!=null?item.actualBeforePaid:0;
+    delete item.actualBeforePaid;
+  }else{
+    if(item.actual>0)item.actualBeforePaid=item.actual;else delete item.actualBeforePaid;
+    item.actual=item.planned;
+  }
+  item[flag]=isPaid(item);
+  log(item[flag]?(type==='expense'?'Plătit':'Încasat'):'Demarcat',item.name);
+  save();render();
+}
+
+/* ====================== Categorii ====================== */
+function openCatModal(){renderCatList();$('catModal').classList.add('show')}
+function closeCatModal(){$('catModal').classList.remove('show')}
+function renderCatList(){
+  $('catList').innerHTML=state.categories.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span class="cat-dot" style="background:${catColor(c)}"></span><span style="flex:1;font-size:.82rem">${esc(c)}</span>
+      <button class="btn btn-ghost btn-icon btn-sm" onclick="removeCategory(${i})">🗑️</button></div>`).join('')||'<p style="color:var(--muted)">Nicio categorie</p>';
+}
+function addCategory(){
+  const n=$('newCatName').value.trim().slice(0,100);
+  if(!n){toast('Introdu un nume','error');return}
+  if(state.categories.includes(n)){toast('Există deja','error');return}
+  state.categories.push(n);assignColors(state);
+  log('Categorie nouă',n);save();renderCatList();render();
+  $('newCatName').value='';toast('Adăugat','success');
+}
+function removeCategory(i){
+  const c=state.categories[i];
+  const used=state.expenses.filter(e=>e.category===c).length;
+  if(used){toast(`„${c}" e folosită de ${used} cheltuieli. Mută-le într-o altă categorie înainte de ștergere.`,'error');return}
+  state.categories.splice(i,1);delete state.catColors[c];
+  log('Ștergere categorie',c);save();renderCatList();render();
+}
+
+/* ====================== Reset / backup / import ====================== */
+function resetData(){
+  if(!confirm('Resetezi la bugetul implicit Sep 2026 – Dec 2027?\nDatele curente se înlocuiesc. Înainte se descarcă automat un backup JSON.'))return;
+  exportJSON(true);
+  localStorage.removeItem(STORAGE_KEY);
+  ['bugetPopa_v3','bugetTracker_v2','bugetTracker_v1'].forEach(k=>localStorage.removeItem(k));
+  initDefaults();toast('Resetat la bugetul implicit (backup descărcat)','success');render();
+}
+function exportJSON(isBackup){
+  const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download=`buget-popa-${isBackup===true?'backup-':''}${state.year}-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  if(isBackup!==true)toast('Export OK','success');
+}
+function importJSON(ev){
+  const f=ev.target.files[0];if(!f)return;
+  if(f.size>5*1024*1024){toast('Fișier prea mare','error');ev.target.value='';return}
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const res=normState(JSON.parse(e.target.result),true);
+      if(!confirm(`Importi ${res.state.expenses.length} cheltuieli și ${res.state.incomes.length} venituri din „${f.name}"?\nDatele curente se înlocuiesc (se descarcă înainte un backup JSON).`))return;
+      exportJSON(true);
+      state=res.state;
+      log('Import',f.name);save();render();toast('Import OK','success');
+    }catch(err){console.error(err);toast('Fișier invalid: '+err.message,'error')}
+  };
+  r.onerror=()=>toast('Fișierul nu a putut fi citit','error');
+  r.readAsText(f);ev.target.value='';
+}
+
+/* ====================== Export Excel / PDF ====================== */
+const STATUS_RO={active:'Activ',postponed:'Amânat',cancelled:'Anulat'};
+function getExportData(){
+  const months=getActiveMonths(),year=state.year;
+  const rows=months.map(m=>rowFor(year,m));
+  const exAll=state.expenses.filter(e=>e.year===year&&months.includes(e.month));
+  const inc=state.incomes.filter(i=>i.year===year&&months.includes(i.month));
+  const open=periodOpening(year,months);
+  const t={ip:sum(rows,r=>r.ip),ia:sum(rows,r=>r.ia),ep:sum(rows,r=>r.ep),ea:sum(rows,r=>r.ea)};
+  const cat={};
+  exAll.forEach(e=>{const c=cat[e.category]||(cat[e.category]={p:0,a:0});c.p+=planOf(e);c.a+=realOf(e)});
+  return{months,year,rows,exAll,inc,open,t,cat};
+}
+function exportExcel(){
+  if(typeof XLSX==='undefined'){toast('Biblioteca Excel nu s-a încărcat','error');return}
+  const{months,year,rows,exAll,inc,open,t,cat}=getExportData();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+    ['BUGET TRACKER FAM. POPA – TOTAL'],['An',year],['Vizualizare',state.view],['Generat',new Date().toLocaleString('ro-RO')],[],
+    ['Indicator','Planificat (lei)','Realizat (lei)'],
+    ['Report la început de perioadă',open,open],
+    ['Venituri',t.ip,t.ia],['Cheltuieli',t.ep,t.ea],
+    ['Sold (cu report)',open+t.ip-t.ep,open+t.ia-t.ea]]),'Total');
+  const lun=[['Lună','Report din luna ant.','Venituri plan.','Venituri real.','Cheltuieli plan.','Cheltuieli real.','Sold plan. (cu report)','Sold real (cu report)','Stare']];
+  rows.forEach((r,i)=>lun.push([MONTH_SHORT[months[i]]+' '+year,r.open,r.ip,r.ia,r.ep,r.ea,r.closeP,r.closeR,r.closed?'Închisă':'Deschisă']));
+  lun.push(['TOTAL',open,t.ip,t.ia,t.ep,t.ea,open+t.ip-t.ep,open+t.ia-t.ea,'']);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(lun),'Pe luni');
+  const catRows=[['Categorie','Planificat','Realizat','Diferență']];
+  Object.keys(cat).sort().forEach(c=>catRows.push([c,cat[c].p,cat[c].a,cat[c].a-cat[c].p]));
+  catRows.push(['TOTAL',t.ep,t.ea,t.ea-t.ep]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(catRows),'Pe categorii');
+  const det=[['Denumire','Categorie','Lună','Planificat','Realizat','Status','Note']];
+  [...exAll].sort((a,b)=>a.month-b.month||(a.category||'').localeCompare(b.category||'')).forEach(e=>
+    det.push([e.name,e.category,MONTH_SHORT[e.month]+' '+e.year,e.planned||0,e.actual||0,STATUS_RO[e.status||'active'],e.notes||'']));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(det),'Detaliu cheltuieli');
+  const vin=[['Sursă','Lună','Planificat','Realizat','Note']];
+  [...inc].sort((a,b)=>a.month-b.month||a.name.localeCompare(b.name)).forEach(i=>vin.push([i.name,MONTH_SHORT[i.month]+' '+i.year,i.planned||0,i.actual||0,i.notes||'']));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(vin),'Detaliu venituri');
+  XLSX.writeFile(wb,`Buget_Popa_${year}_${state.view}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast('Excel exportat ✓','success');
+  log('Export Excel',`An ${year}, vizualizare ${state.view}`);save(false);
+}
+function loadPdfFont(){
+  return new Promise(res=>{
+    if(window.PDF_FONT)return res(true);
+    const s=document.createElement('script');s.src='pdf-font.js';
+    s.onload=()=>res(!!window.PDF_FONT);s.onerror=()=>res(false);
+    document.head.appendChild(s);
+  });
+}
+function buildPdf(uni){
+  const{jsPDF}=window.jspdf;
+  const{months,year,rows,exAll,open,t,cat}=getExportData();
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  let fam='helvetica';
+  if(uni){
+    doc.addFileToVFS('DejaVuSans.ttf',window.PDF_FONT.regular);doc.addFont('DejaVuSans.ttf','DejaVu','normal');
+    doc.addFileToVFS('DejaVuSans-Bold.ttf',window.PDF_FONT.bold);doc.addFont('DejaVuSans-Bold.ttf','DejaVu','bold');
+    fam='DejaVu';
+  }
+  const T=s=>uni?String(s):String(s).normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const N=n=>(Math.round(Number(n)||0)||0).toLocaleString('ro-RO');
+  const pageW=doc.internal.pageSize.getWidth();
+  let y=16;
+  doc.setFont(fam,'bold');doc.setFontSize(16);doc.text(T('Buget Tracker – Familia Popa'),14,y);y+=7;
+  doc.setFont(fam,'normal');doc.setFontSize(10);doc.setTextColor(80);
+  doc.text(T(`An ${year} · Vizualizare: ${state.view} · Generat: ${new Date().toLocaleString('ro-RO')}`),14,y);y+=10;doc.setTextColor(0);
+  const common={theme:'grid',margin:{left:14,right:14}};
+  doc.setFont(fam,'bold');doc.setFontSize(12);doc.text('1. TOTALURI',14,y);y+=2;
+  doc.autoTable({...common,startY:y,head:[[T('Indicator'),'Planificat (lei)','Realizat (lei)']],
+    body:[[T('Report la început'),N(open),N(open)],['Venituri',N(t.ip),N(t.ia)],['Cheltuieli',N(t.ep),N(t.ea)],[T('Sold (cu report)'),N(open+t.ip-t.ep),N(open+t.ia-t.ea)]],
+    headStyles:{fillColor:[37,99,235],font:fam,fontStyle:'bold'},styles:{font:fam,fontSize:9}});
+  y=doc.lastAutoTable.finalY+10;
+  doc.setFont(fam,'bold');doc.setFontSize(12);doc.text('2. PE LUNI (cu report de sold)',14,y);y+=2;
+  const lun=rows.map((r,i)=>[T(MONTH_LONG[months[i]]),N(r.open),N(r.ip),N(r.ia),N(r.ep),N(r.ea),N(r.closeP),N(r.closeR)]);
+  lun.push(['TOTAL',N(open),N(t.ip),N(t.ia),N(t.ep),N(t.ea),N(open+t.ip-t.ep),N(open+t.ia-t.ea)]);
+  doc.autoTable({...common,startY:y,head:[[T('Lună'),'Report','Ven. plan.','Ven. real.','Chel. plan.','Chel. real.','Sold plan.','Sold real']],body:lun,
+    headStyles:{fillColor:[37,99,235],font:fam,fontStyle:'bold'},styles:{font:fam,fontSize:8}});
+  y=doc.lastAutoTable.finalY+10;
+  if(y>250){doc.addPage();y=16}
+  doc.setFont(fam,'bold');doc.setFontSize(12);doc.text('3. PE CATEGORII',14,y);y+=2;
+  const catBody=Object.keys(cat).sort().map(c=>[T(c),N(cat[c].p),N(cat[c].a),N(cat[c].a-cat[c].p)]);
+  catBody.push(['TOTAL',N(t.ep),N(t.ea),N(t.ea-t.ep)]);
+  doc.autoTable({...common,startY:y,head:[['Categorie','Planificat','Realizat',T('Diferență')]],body:catBody,
+    headStyles:{fillColor:[124,58,237],font:fam,fontStyle:'bold'},styles:{font:fam,fontSize:8}});
+  doc.addPage();y=16;
+  doc.setFont(fam,'bold');doc.setFontSize(12);doc.text('4. DETALIU CHELTUIELI',14,y);y+=2;
+  const det=[...exAll].sort((a,b)=>a.month-b.month||(a.category||'').localeCompare(b.category||'')).map(e=>[
+    T(e.name.substring(0,34)),T((e.category||'').substring(0,22)),MONTH_SHORT[e.month],N(e.planned),N(e.actual),T(STATUS_RO[e.status||'active'])]);
+  doc.autoTable({...common,startY:y,head:[['Denumire','Categorie',T('Lună'),'Plan.','Real.','Status']],body:det,
+    headStyles:{fillColor:[37,99,235],font:fam,fontStyle:'bold'},styles:{font:fam,fontSize:7}});
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);doc.setFont(fam,'normal');doc.setFontSize(8);doc.setTextColor(150);
+    doc.text(`Pagina ${i}/${pages}`,pageW/2,doc.internal.pageSize.getHeight()-8,{align:'center'});
+  }
+  return doc;
+}
+async function exportPDF(){
+  if(!window.jspdf){toast('Biblioteca PDF nu s-a încărcat','error');return}
+  const haveFont=await loadPdfFont();
+  let doc=null,uni=false;
+  if(haveFont){try{doc=buildPdf(true);uni=true}catch(e){console.warn('Font PDF indisponibil, folosesc fontul standard:',e);doc=null}}
+  if(!doc){try{doc=buildPdf(false)}catch(e){console.error(e);toast('Eroare la generarea PDF','error');return}}
+  doc.save(`Buget_Popa_${state.year}_${state.view}_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast(uni?'PDF exportat ✓':'PDF exportat (fără diacritice – fontul nu s-a încărcat)',uni?'success':'error');
+  log('Export PDF',`An ${state.year}, vizualizare ${state.view}`);save(false);
+}
+
+/* ====================== Pornire ====================== */
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+$('postponeModal').addEventListener('click',e=>{if(e.target.id==='postponeModal')closePostpone()});
+$('catModal').addEventListener('click',e=>{if(e.target.id==='catModal')closeCatModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closePostpone();closeCatModal()}});
+
+load();
+if(checkAuth())render();
+else $('loginPass').focus();
+</script>
+</body>
+</html>
